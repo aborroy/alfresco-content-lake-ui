@@ -30,9 +30,11 @@ RUN git clone --depth 1 --branch ${ACA_TAG} \
     https://github.com/Alfresco/alfresco-content-app.git .
 
 # Copy ext-rag extension
-COPY ext-rag/src/  projects/ext-rag/src/
-COPY LICENSE       projects/ext-rag/LICENSE
-COPY README.md     projects/ext-rag/README.md
+COPY ext-rag/src/                  projects/ext-rag/src/
+COPY ext-rag/tsconfig.lib.json     projects/ext-rag/tsconfig.lib.json
+COPY ext-rag/tsconfig.lib.prod.json projects/ext-rag/tsconfig.lib.prod.json
+COPY ext-rag/README.md             projects/ext-rag/README.md
+COPY LICENSE                       projects/ext-rag/LICENSE
 
 # ----------------------------------------------------------
 # Patch 1: Register ext-rag in extensions.module.ts
