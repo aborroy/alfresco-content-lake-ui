@@ -1,0 +1,9 @@
+<!--
+  Compact chat panel displayed inside the ACA/ADW info-drawer (sidebar).
+  It reads the currently selected node from the ACA store and scopes
+  all RAG questions to that document.
+-->
+<ext-rag-chat [compact]="true"
+              [scopedNodeId]="nodeId"
+              [scopedNodeName]="nodeName">
+</ext-rag-chat>

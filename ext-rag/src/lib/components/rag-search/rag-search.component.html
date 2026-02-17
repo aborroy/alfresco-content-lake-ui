@@ -1,0 +1,89 @@
+<div class="rag-search">
+
+  <!-- Query bar -->
+  <div class="rag-search__input-row">
+    <mat-form-field appearance="outline" class="rag-search__query-field">
+      <mat-label>Semantic search</mat-label>
+      <input matInput
+             [(ngModel)]="query"
+             (keyup.enter)="runSearch()"
+             placeholder="Search across your content lake…" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="rag-search__param">
+      <mat-label>Top K</mat-label>
+      <input matInput type="number" [(ngModel)]="topK" min="1" max="50" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="rag-search__param">
+      <mat-label>Min score</mat-label>
+      <input matInput type="number" [(ngModel)]="minScore" min="0" max="1" step="0.05" />
+    </mat-form-field>
+
+    <button mat-raised-button color="primary"
+            [disabled]="!query.trim() || loading"
+            (click)="runSearch()">
+      <mat-icon *ngIf="!loading">search</mat-icon>
+      <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+      Search
+    </button>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="error" class="rag-search__error">
+    <mat-icon>error_outline</mat-icon>
+    {{ error }}
+  </div>
+
+  <!-- Results -->
+  <div *ngIf="documents.length > 0" class="rag-search__results">
+
+    <div class="rag-search__meta">
+      Found <strong>{{ documents.length }}</strong> document{{ documents.length > 1 ? 's' : '' }} in
+      <strong>{{ searchTimeMs }}ms</strong>
+    </div>
+
+    <mat-accordion>
+      <mat-expansion-panel *ngFor="let doc of documents">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-icon class="rag-search__doc-icon">insert_drive_file</mat-icon>
+            {{ doc.name }}
+          </mat-panel-title>
+          <mat-panel-description>
+            Score: {{ doc.score | number:'1.3-3' }}
+            · {{ doc.chunks.length }} chunk{{ doc.chunks.length > 1 ? 's' : '' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div class="rag-search__detail">
+          <p class="rag-search__path">
+            <mat-icon>folder</mat-icon>
+            {{ doc.path }}
+          </p>
+          <p>
+            <a [routerLink]="['/search', { outlets: { viewer: ['view', doc.nodeId] } }]"
+               [queryParams]="{ location: '/rag' }"
+               class="rag-search__open-link">
+              Open in repository
+            </a>
+          </p>
+
+          <h4>Matching chunks</h4>
+          <div *ngFor="let chunk of doc.chunks" class="rag-search__chunk">
+            <span class="rag-search__chunk-score">{{ chunk.score | number:'1.3-3' }}</span>
+            <span class="rag-search__chunk-text">{{ chunk.text }}</span>
+          </div>
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!loading && !error && documents.length === 0 && searchTimeMs > 0" class="rag-search__empty">
+    <mat-icon>search_off</mat-icon>
+    <p>No results matched your query.</p>
+  </div>
+
+</div>

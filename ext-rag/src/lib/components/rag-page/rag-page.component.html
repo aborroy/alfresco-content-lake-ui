@@ -1,0 +1,28 @@
+<div class="rag-page">
+
+  <div class="rag-page__header">
+    <mat-icon class="rag-page__logo">psychology</mat-icon>
+    <h2>RAG Assistant</h2>
+  </div>
+
+  <mat-tab-group animationDuration="200ms" class="rag-page__tabs">
+
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>chat</mat-icon>&nbsp;Ask
+      </ng-template>
+      <ext-rag-chat [scopedNodeId]="prefilledNodeId"
+                    [scopedNodeName]="prefilledNodeName">
+      </ext-rag-chat>
+    </mat-tab>
+
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>search</mat-icon>&nbsp;Semantic Search
+      </ng-template>
+      <ext-rag-search></ext-rag-search>
+    </mat-tab>
+
+  </mat-tab-group>
+
+</div>

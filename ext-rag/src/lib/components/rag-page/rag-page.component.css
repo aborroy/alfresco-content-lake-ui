@@ -1,0 +1,60 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.rag-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 0 24px;
+}
+
+.rag-page__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  flex-shrink: 0;
+}
+
+.rag-page__logo {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  color: #1976d2;
+}
+
+.rag-page__header h2 {
+  margin: 0;
+  font-weight: 400;
+}
+
+.rag-page__tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Propagate height through Material tab internals */
+.rag-page__tabs ::ng-deep .mat-mdc-tab-header {
+  flex-shrink: 0;
+}
+
+.rag-page__tabs ::ng-deep .mat-mdc-tab-body-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.rag-page__tabs ::ng-deep .mat-mdc-tab-body {
+  height: 100%;
+}
+
+.rag-page__tabs ::ng-deep .mat-mdc-tab-body-content {
+  height: 100%;
+  overflow-y: auto;
+}

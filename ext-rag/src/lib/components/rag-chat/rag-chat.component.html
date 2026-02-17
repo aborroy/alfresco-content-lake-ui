@@ -1,0 +1,109 @@
+<div class="rag-chat" [class.rag-chat--compact]="compact">
+
+  <!-- Scoped-document banner -->
+  <div *ngIf="scopedNodeName" class="rag-chat__scope-banner">
+    <mat-icon>description</mat-icon>
+    Asking about: <strong>{{ scopedNodeName }}</strong>
+    <button mat-icon-button (click)="clearScope()" matTooltip="Clear scope">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Messages area -->
+  <div class="rag-chat__messages" #messagesContainer>
+
+    <!-- Welcome state -->
+    <div *ngIf="messages.length === 0" class="rag-chat__welcome">
+      <mat-icon>psychology</mat-icon>
+      <h3>RAG Assistant</h3>
+      <p>Ask a question about your content lake.
+         Answers are grounded in your indexed documents.</p>
+    </div>
+
+    <div *ngFor="let msg of messages"
+         class="rag-chat__bubble"
+         [class.rag-chat__bubble--user]="msg.role === 'user'"
+         [class.rag-chat__bubble--assistant]="msg.role === 'assistant'">
+
+      <!-- User message -->
+      <div *ngIf="msg.role === 'user'" class="rag-chat__user-text">
+        {{ msg.content }}
+      </div>
+
+      <!-- Assistant message -->
+      <div *ngIf="msg.role === 'assistant'">
+
+        <!-- Loading indicator -->
+        <div *ngIf="msg.loading" class="rag-chat__loading">
+          <mat-spinner diameter="20"></mat-spinner>
+          Thinking…
+        </div>
+
+        <!-- Error -->
+        <div *ngIf="msg.error" class="rag-chat__error">
+          <mat-icon>error_outline</mat-icon>
+          {{ msg.error }}
+        </div>
+
+        <!-- Answer text -->
+        <div *ngIf="!msg.loading && !msg.error" class="rag-chat__answer">
+          <div class="rag-chat__answer-text">{{ msg.content }}</div>
+
+          <!-- Metadata -->
+          <div *ngIf="msg.model || msg.totalMs" class="rag-chat__meta">
+            <span *ngIf="msg.model" class="rag-chat__meta-chip">
+              <mat-icon>smart_toy</mat-icon> {{ msg.model }}
+            </span>
+            <span *ngIf="msg.totalMs" class="rag-chat__meta-chip">
+              <mat-icon>timer</mat-icon>
+              {{ msg.totalMs }}ms
+              (retrieval {{ msg.searchTimeMs }}ms +
+               generation {{ msg.generationTimeMs }}ms)
+            </span>
+          </div>
+
+          <!-- Sources -->
+          <div *ngIf="msg.sources && msg.sources.length > 0" class="rag-chat__sources">
+            <button mat-button (click)="msg['_showSources'] = !msg['_showSources']">
+              <mat-icon>{{ msg['_showSources'] ? 'expand_less' : 'expand_more' }}</mat-icon>
+              {{ msg.sources.length }} source{{ msg.sources.length > 1 ? 's' : '' }}
+            </button>
+
+            <div *ngIf="msg['_showSources']" class="rag-chat__sources-list">
+              <div *ngFor="let src of msg.sources" class="rag-chat__source-item">
+                <div class="rag-chat__source-header">
+                  <mat-icon>insert_drive_file</mat-icon>
+                  <a [routerLink]="['/search', { outlets: { viewer: ['view', src.nodeId] } }]"
+                     [queryParams]="{ location: '/rag' }">
+                    {{ src.name }}
+                  </a>
+                  <span class="rag-chat__source-path">{{ src.path }}</span>
+                </div>
+                <div *ngFor="let chunk of src.chunks" class="rag-chat__source-chunk">
+                  {{ chunk.text }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input area -->
+  <div class="rag-chat__input-row">
+    <mat-form-field appearance="outline" class="rag-chat__input-field">
+      <input matInput
+             [(ngModel)]="currentQuestion"
+             (keyup.enter)="ask()"
+             placeholder="Ask a question…"
+             [disabled]="thinking" />
+    </mat-form-field>
+    <button mat-icon-button color="primary"
+            [disabled]="!currentQuestion.trim() || thinking"
+            (click)="ask()"
+            matTooltip="Send">
+      <mat-icon>send</mat-icon>
+    </button>
+  </div>
+</div>

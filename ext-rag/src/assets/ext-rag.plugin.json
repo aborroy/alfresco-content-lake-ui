@@ -1,0 +1,94 @@
+{
+  "$id": "ext-rag",
+  "$version": "1.0.0",
+  "$name": "RAG Assistant",
+  "$vendor": "Alfresco Community",
+  "$license": "Apache-2.0",
+
+  "actions": [
+    { "id": "ext-rag.open-chat", "type": "RAG_OPEN_CHAT" },
+    { "id": "ext-rag.ask-about", "type": "RAG_ASK_ABOUT", "payload": "$(context.selection.first.entry)" }
+  ],
+
+  "routes": [
+    {
+      "id": "ext-rag.page",
+      "path": "rag",
+      "component": "ext-rag.page",
+      "auth": ["content-services.auth"],
+      "data": { "title": "RAG Assistant" }
+    }
+  ],
+
+  "features": {
+    "navbar": [
+      {
+        "id": "app.navbar.primary",
+        "items": [
+          {
+            "id": "ext-rag.nav",
+            "icon": "psychology",
+            "title": "RAG Assistant",
+            "description": "AI-powered semantic search and Q&A",
+            "route": "rag",
+            "order": 500
+          }
+        ]
+      }
+    ],
+
+    "toolbar": [
+      {
+        "id": "app.toolbar.more",
+        "children": [
+          {
+            "id": "ext-rag.toolbar.ask-about",
+            "order": 91,
+            "icon": "psychology",
+            "title": "Ask AI about this document",
+            "actions": { "click": "ext-rag.ask-about" },
+            "rules": { "visible": ["app.selection.file"] }
+          }
+        ]
+      }
+    ],
+
+    "contextMenu": [
+      {
+        "id": "ext-rag.context.ask-about",
+        "order": 91,
+        "icon": "psychology",
+        "title": "Ask AI about this document",
+        "actions": { "click": "ext-rag.ask-about" },
+        "rules": { "visible": ["app.selection.file"] }
+      }
+    ],
+
+    "viewer": {
+      "toolbarActions": [
+        {
+          "id": "app.viewer.toolbar.more",
+          "children": [
+            {
+              "id": "ext-rag.viewer.ask-about",
+              "order": 10,
+              "icon": "psychology",
+              "title": "Ask AI about this document",
+              "actions": { "click": "ext-rag.ask-about" }
+            }
+          ]
+        }
+      ]
+    },
+
+    "sidebar": [
+      {
+        "id": "ext-rag.sidebar-tab",
+        "order": 200,
+        "title": "Ask AI",
+        "icon": "psychology",
+        "component": "ext-rag.sidebar"
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "//": "Add this block inside your existing app.config.json 'plugins' section",
+
+  "plugins": {
+    "ragService": {
+      "baseUrl": "/api/rag",
+      "searchPath": "/search/semantic",
+      "promptPath": "/prompt"
+    }
+  }
+}
