@@ -1,4 +1,12 @@
-# alfresco-content-lake-ui
+# Alfresco Content Lake UI
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![ADF](https://img.shields.io/badge/Alfresco%20ADF-8.4.0--21916318527-7C4DFF.svg)](https://github.com/Alfresco/alfresco-ng2-components)
+[![Angular](https://img.shields.io/badge/Angular-19.2.18-DD0031.svg)](https://angular.dev/)
+[![Nx](https://img.shields.io/badge/Nx-21.5.2-143055.svg)](https://nx.dev/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docs.docker.com/compose/)
+[![Status](https://img.shields.io/badge/Status-PoC-yellow.svg)]()
+
 
 UI extension for [alfresco-content-lake](https://github.com/aborroy/alfresco-content-lake) that adds **semantic search** and **RAG question-answering** to Alfresco Content Application (ACA) and Alfresco Digital Workspace (ADW).
 
