@@ -7,7 +7,9 @@
 
   "actions": [
     { "id": "ext-rag.open-chat", "type": "RAG_OPEN_CHAT" },
-    { "id": "ext-rag.ask-about", "type": "RAG_ASK_ABOUT", "payload": "$(context.selection.first.entry)" }
+    { "id": "ext-rag.ask-about", "type": "RAG_ASK_ABOUT", "payload": "$(context.selection.first.entry)" },
+    { "id": "ext-rag.scope.enable-folder", "type": "CONTENT_LAKE_ENABLE_FOLDER_SCOPE", "payload": "$(context.selection.first.entry)" },
+    { "id": "ext-rag.scope.disable-folder", "type": "CONTENT_LAKE_DISABLE_FOLDER_SCOPE", "payload": "$(context.selection.first.entry)" }
   ],
 
   "routes": [
@@ -55,8 +57,24 @@
 
     "contextMenu": [
       {
+        "id": "ext-rag.context.enable-folder-scope",
+        "order": 92,
+        "icon": "offline_bolt",
+        "title": "Enable Content Lake for this folder",
+        "actions": { "click": "ext-rag.scope.enable-folder" },
+        "rules": { "visible": ["app.selection.folder", "app.selection.folder.canUpdate", "!ext-rag.selection.folder.indexed"] }
+      },
+      {
+        "id": "ext-rag.context.disable-folder-scope",
+        "order": 93,
+        "icon": "hide_source",
+        "title": "Disable Content Lake for this folder",
+        "actions": { "click": "ext-rag.scope.disable-folder" },
+        "rules": { "visible": ["app.selection.folder", "app.selection.folder.canUpdate", "ext-rag.selection.folder.indexed"] }
+      },
+      {
         "id": "ext-rag.context.ask-about",
-        "order": 91,
+        "order": 94,
         "icon": "psychology",
         "title": "Ask AI about this document",
         "actions": { "click": "ext-rag.ask-about" },
@@ -88,6 +106,32 @@
         "title": "Ask AI",
         "icon": "psychology",
         "component": "ext-rag.sidebar"
+      },
+      {
+        "id": "ext-rag.content-lake-sidebar-tab",
+        "order": 210,
+        "title": "Content Lake",
+        "icon": "offline_bolt",
+        "component": "ext-rag.content-lake-sidebar"
+      }
+    ],
+
+    "badges": [
+      {
+        "id": "ext-rag.badge.content-lake-enabled",
+        "icon": "offline_bolt",
+        "tooltip": "Content Lake enabled",
+        "rules": {
+          "visible": "ext-rag.node.in-content-lake"
+        }
+      },
+      {
+        "id": "ext-rag.badge.content-lake-excluded",
+        "icon": "block",
+        "tooltip": "Excluded from Content Lake",
+        "rules": {
+          "visible": "ext-rag.node.excluded-from-content-lake"
+        }
       }
     ]
   }

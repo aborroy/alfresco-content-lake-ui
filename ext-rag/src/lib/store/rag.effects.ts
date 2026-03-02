@@ -1,9 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { tap } from 'rxjs';
+import { EMPTY, catchError, switchMap, tap } from 'rxjs';
 
-import { RAG_OPEN_CHAT, RAG_ASK_ABOUT } from './rag.actions';
+import { ContentLakeScopeService } from '../services/content-lake-scope.service';
+import {
+  CONTENT_LAKE_DISABLE_FOLDER_SCOPE,
+  CONTENT_LAKE_ENABLE_FOLDER_SCOPE,
+  RAG_OPEN_CHAT,
+  RAG_ASK_ABOUT
+} from './rag.actions';
 
 /**
  * Side-effects triggered by the extension descriptor actions.
@@ -17,6 +23,7 @@ export class RagEffects {
 
   private actions$ = inject(Actions);
   private router   = inject(Router);
+  private contentLakeScopeService = inject(ContentLakeScopeService);
 
   openChat$ = createEffect(
     () =>
@@ -40,6 +47,38 @@ export class RagEffects {
               queryParams: { nodeId: node.id, name: node.name }
             });
           }
+        })
+      ),
+    { dispatch: false }
+  );
+
+  enableFolderScope$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(CONTENT_LAKE_ENABLE_FOLDER_SCOPE),
+        switchMap((action: any) => {
+          const node = action.payload;
+          if (!node?.id) {
+            return EMPTY;
+          }
+
+          return this.contentLakeScopeService.setFolderIndexed(node, true).pipe(catchError(() => EMPTY));
+        })
+      ),
+    { dispatch: false }
+  );
+
+  disableFolderScope$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(CONTENT_LAKE_DISABLE_FOLDER_SCOPE),
+        switchMap((action: any) => {
+          const node = action.payload;
+          if (!node?.id) {
+            return EMPTY;
+          }
+
+          return this.contentLakeScopeService.setFolderIndexed(node, false).pipe(catchError(() => EMPTY));
         })
       ),
     { dispatch: false }

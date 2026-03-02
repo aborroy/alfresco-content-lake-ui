@@ -7,3 +7,5 @@
  */
 export const RAG_OPEN_CHAT  = 'RAG_OPEN_CHAT';
 export const RAG_ASK_ABOUT  = 'RAG_ASK_ABOUT';   // context-menu: ask about selected doc
+export const CONTENT_LAKE_ENABLE_FOLDER_SCOPE = 'CONTENT_LAKE_ENABLE_FOLDER_SCOPE';
+export const CONTENT_LAKE_DISABLE_FOLDER_SCOPE = 'CONTENT_LAKE_DISABLE_FOLDER_SCOPE';

@@ -16,12 +16,16 @@ UI extension for [alfresco-content-lake](https://github.com/aborroy/alfresco-con
 * Chat-style Q&A: natural language questions answered via RAG, displaying the generated answer, model used, timing breakdown, and referenced source documents with chunks
 * Document-scoped mode: right-click any document and choose *"Ask AI about this document"* to open the chat pre-scoped to that file
 * Sidebar tab: compact chat panel in the info-drawer, automatically scoped to the selected document.
+* Content Lake scope controls: right-click a folder to add or remove the `cl:indexed` aspect, or use the dedicated *Content Lake* sidebar tab
+* Document override: set `cl:excludeFromLake` on a document from the *Content Lake* sidebar to opt it out of an indexed folder subtree
+* Visual scope indicators: badges show when a folder or document is in Content Lake scope, and when a document is explicitly excluded
 * Document preview: result links open the ACA document viewer; closing the preview returns to the RAG Assistant page
 * Zero custom auth code: authentication is forwarded transparently via the ADF HTTP interceptor and a shared gateway
 
 ## Prerequisites
 
 * A running [alfresco-content-lake](https://github.com/aborroy/alfresco-content-lake) deployment with `rag-service` available
+* The `content-lake-repo-model` module deployed in Alfresco Repository so `cl:indexed` and `cl:excludeFromLake` exist
 * ACA (Alfresco Content App) source checkout, or ADW (Alfresco Digital Workspace) source
 * Node.js 18+
 
@@ -95,6 +99,17 @@ npm start
 ```
 
 Open `http://localhost:4200`, log in, and find the *RAG Assistant* entry in the left navigation.
+
+## Content Lake scope controls
+
+The extension also exposes the repository scope model introduced by `alfresco-content-lake`:
+
+* Right-click a folder and use *Enable Content Lake for this folder* or *Disable Content Lake for this folder* to add or remove `cl:indexed`
+* Open the *Content Lake* tab in the ACA info drawer to manage the same folder toggle without leaving the current view
+* Select a document inside an indexed subtree and use *Exclude this document from Content Lake* to set `cl:excludeFromLake=true`
+* Look for the `offline_bolt` badge on nodes that are currently in Content Lake scope, and the `block` badge on documents explicitly excluded from ingestion
+
+These controls call the standard Alfresco Repository nodes API directly. No extra UI-specific backend service is required.
 
 ## Install into ADW
 

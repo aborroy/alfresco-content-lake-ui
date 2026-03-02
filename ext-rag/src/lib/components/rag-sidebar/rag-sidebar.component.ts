@@ -28,14 +28,13 @@ export class RagSidebarComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // ACA/ADW expose the selection state in the root store.
-    // The exact selector path is:
-    //   state['app']['selection']['file']['entry']
-    this.store.select((state: any) => state?.app?.selection?.file)
+    // The `first` selection covers both the document list and search rows.
+    this.store.select((state: any) => state?.app?.selection?.first?.entry ?? state?.app?.selection?.file?.entry)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(file => {
-        if (file?.entry) {
-          this.nodeId = file.entry.id;
-          this.nodeName = file.entry.name;
+      .subscribe((node) => {
+        if (node?.id && node?.isFile) {
+          this.nodeId = node.id;
+          this.nodeName = node.name;
         } else {
           this.nodeId = null;
           this.nodeName = null;
