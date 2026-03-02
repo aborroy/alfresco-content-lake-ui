@@ -63,11 +63,20 @@
             {{ doc.path }}
           </p>
           <p>
-            <a [routerLink]="['/search', { outlets: { viewer: ['view', doc.nodeId] } }]"
+            <span *ngIf="doc.sourceId" class="rag-search__source-id">
+              Source: {{ doc.sourceId }}
+            </span>
+          </p>
+          <p>
+            <a *ngIf="canOpenInRepository(doc)"
+               [routerLink]="['/search', { outlets: { viewer: ['view', doc.nodeId] } }]"
                [queryParams]="{ location: '/rag' }"
                class="rag-search__open-link">
               Open in repository
             </a>
+            <span *ngIf="!canOpenInRepository(doc)" class="rag-search__open-link" [title]="openLinkHint(doc)">
+              {{ openLinkHint(doc) }}
+            </span>
           </p>
 
           <h4>Matching chunks</h4>

@@ -58,6 +58,11 @@
   font-size: 13px;
 }
 
+.rag-search__source-id {
+  font-size: 12px;
+  color: #666;
+}
+
 .rag-search__open-link:hover {
   text-decoration: underline;
 }

@@ -73,11 +73,18 @@
               <div *ngFor="let src of msg.sources" class="rag-chat__source-item">
                 <div class="rag-chat__source-header">
                   <mat-icon>insert_drive_file</mat-icon>
-                  <a [routerLink]="['/search', { outlets: { viewer: ['view', src.nodeId] } }]"
+                  <a *ngIf="canOpenInRepository(src)"
+                     [routerLink]="['/search', { outlets: { viewer: ['view', src.nodeId] } }]"
                      [queryParams]="{ location: '/rag' }">
                     {{ src.name }}
                   </a>
+                  <span *ngIf="!canOpenInRepository(src)"
+                        class="rag-chat__source-title"
+                        [title]="openLinkHint(src)">
+                    {{ src.name }}
+                  </span>
                   <span class="rag-chat__source-path">{{ src.path }}</span>
+                  <span *ngIf="src.sourceId" class="rag-chat__source-path">Source: {{ src.sourceId }}</span>
                 </div>
                 <div *ngFor="let chunk of src.chunks" class="rag-chat__source-chunk">
                   {{ chunk.text }}

@@ -145,6 +145,10 @@
   text-decoration: none;
 }
 
+.rag-chat__source-title {
+  color: #1976d2;
+}
+
 .rag-chat__source-header a:hover {
   text-decoration: underline;
 }

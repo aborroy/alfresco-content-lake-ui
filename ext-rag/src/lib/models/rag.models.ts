@@ -18,6 +18,7 @@ export interface SemanticSearchRequest {
 export interface SearchResultSourceDocument {
   documentId: string;
   nodeId: string;
+  sourceId?: string;
   name: string;
   path: string;
   mimeType: string;
@@ -63,6 +64,7 @@ export interface RagPromptRequest {
 export interface PromptSource {
   documentId: string;
   nodeId: string;
+  sourceId?: string;
   name: string;
   path: string;
   chunkText: string;
@@ -91,6 +93,7 @@ export interface ChunkSnippet {
 
 export interface MergedDocument {
   nodeId: string;
+  sourceId?: string;
   name: string;
   path: string;
   score: number;
