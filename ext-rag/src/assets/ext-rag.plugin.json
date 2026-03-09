@@ -120,6 +120,15 @@
 
     "badges": [
       {
+        "id": "ext-rag.badge.content-lake-sync-status",
+        "icon": "help_outline",
+        "tooltip": "Content Lake ingestion status",
+        "component": "ext-rag.content-lake-status-badge",
+        "rules": {
+          "visible": ["ext-rag.node.file", "ext-rag.node.in-content-lake"]
+        }
+      },
+      {
         "id": "ext-rag.badge.content-lake-enabled",
         "icon": "offline_bolt",
         "tooltip": "Content Lake enabled",

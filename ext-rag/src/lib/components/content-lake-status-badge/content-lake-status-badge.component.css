@@ -1,0 +1,15 @@
+.ext-rag-status-badge {
+  color: var(--theme-secondary-text);
+}
+
+.ext-rag-status-badge.ext-rag-status-badge--pending {
+  color: #ef6c00;
+}
+
+.ext-rag-status-badge.ext-rag-status-badge--indexed {
+  color: #2e7d32;
+}
+
+.ext-rag-status-badge.ext-rag-status-badge--failed {
+  color: #c62828;
+}

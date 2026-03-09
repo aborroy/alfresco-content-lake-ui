@@ -8,6 +8,7 @@ import { RagEffects } from './lib/store/rag.effects';
 import { RagPageComponent } from './lib/components/rag-page/rag-page.component';
 import { RagSidebarComponent } from './lib/components/rag-sidebar/rag-sidebar.component';
 import { ContentLakeSidebarComponent } from './lib/components/content-lake-sidebar/content-lake-sidebar.component';
+import { ContentLakeStatusBadgeComponent } from './lib/components/content-lake-status-badge/content-lake-status-badge.component';
 import { RagAuthInterceptor } from './lib/services/rag-auth.interceptor';
 import {
   asNode,
@@ -33,11 +34,13 @@ export function registerRagComponents(extensions: ExtensionService): () => void 
     extensions.setComponents({
       'ext-rag.page': RagPageComponent,
       'ext-rag.sidebar': RagSidebarComponent,
-      'ext-rag.content-lake-sidebar': ContentLakeSidebarComponent
+      'ext-rag.content-lake-sidebar': ContentLakeSidebarComponent,
+      'ext-rag.content-lake-status-badge': ContentLakeStatusBadgeComponent
     });
 
     extensions.setEvaluators({
       'ext-rag.selection.folder.indexed': (context: any) => hasIndexedAspect(context.selection?.folder),
+      'ext-rag.node.file': (_context: any, node: NodeEntry | Node) => !!getRuleNode(node)?.isFile,
       'ext-rag.node.in-content-lake': (_context: any, node: NodeEntry | Node) => isContentLakeEnabled(getRuleNode(node)),
       'ext-rag.node.excluded-from-content-lake': (_context: any, node: NodeEntry | Node) => isExcludedFromLake(getRuleNode(node)),
       'ext-rag.node.document-override-available': (_context: any, node: NodeEntry | Node) => canManageExcludeOverride(getRuleNode(node)),
