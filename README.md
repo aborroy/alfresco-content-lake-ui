@@ -74,6 +74,9 @@ Add to `app/src/app.config.json` (see [`config/app.config.snippet.json`](config/
   "plugins": {
     "ragService": {
       "baseUrl": "/api/rag"
+    },
+    "contentLakeService": {
+      "baseUrl": "/api/content-lake"
     }
   }
 }
@@ -89,6 +92,12 @@ Add to `app/proxy.conf.js` (see [`config/proxy.conf.snippet.js`](config/proxy.co
   changeOrigin: true,
   secure: false,
   logLevel: 'debug'
+},
+'/api/content-lake': {
+  target: 'http://localhost:9090',
+  changeOrigin: true,
+  secure: false,
+  logLevel: 'debug'
 }
 ```
 
@@ -99,6 +108,32 @@ npm start
 ```
 
 Open `http://localhost:4200`, log in, and find the *RAG Assistant* entry in the left navigation.
+
+## Accessing sidebar features
+
+Use this flow to access all sidebar-driven features from the document list:
+
+1. Open any library or folder in ACA and select a node.
+2. Click the info drawer toggle (right-side panel icon in the top toolbar) to open the right panel.
+3. In the panel header, switch to:
+   * *Ask AI* tab for compact document-scoped chat.
+   * *Content Lake* tab for scope and ingestion controls.
+
+What you can do from each tab:
+
+* *Ask AI* (document selected):
+  * Ask questions about the selected document directly from the sidebar.
+  * Keep context while browsing files without leaving the current page.
+* *Content Lake* (folder selected):
+  * Enable or disable Content Lake inclusion for the folder subtree.
+* *Content Lake* (document selected):
+  * Exclude or include the document from inherited Content Lake scope.
+  * Check *Ingestion status* and refresh it using the refresh icon.
+
+Notes:
+
+* Sidebar tabs appear only when the extension is correctly registered (`provideRagExtension`) and `ext-rag.plugin.json` is included in build assets.
+* *Ingestion status* requires `/api/content-lake/*` to be proxied to `batch-ingester` (see proxy/nginx sections below).
 
 ## Content Lake scope controls
 
@@ -139,6 +174,10 @@ Add this block inside the `server { }` in your existing `nginx.conf` (see [`conf
 location /api/rag/ {
   proxy_pass http://rag-service:9091/api/rag/;
 }
+
+location /api/content-lake/ {
+  proxy_pass http://batch-ingester:9090/api/content-lake/;
+}
 ```
 
 This ensures:
@@ -146,6 +185,7 @@ This ensures:
 * Requests from the browser go to the same origin (no CORS issues)
 * The ADF HTTP interceptor attaches the Alfresco auth ticket automatically
 * `rag-service` receives the ticket and can validate it against the Alfresco authentication API
+* `batch-ingester` serves ingestion-status lookups used by the Content Lake sidebar
 
 ## Authentication flow
 

@@ -8,39 +8,90 @@
           <p>{{ node?.name }}</p>
         </div>
       </div>
-      <div class="ext-rag-content-lake__status" [class.ext-rag-content-lake__status--muted]="!saving">
-        <mat-icon>{{ statusIcon }}</mat-icon>
-        <span>{{ currentStatus }}</span>
-      </div>
     </header>
 
-    <div class="ext-rag-content-lake__controls" *ngIf="isFolder">
-      <mat-slide-toggle
-        [checked]="folderIndexed"
-        [disabled]="!folderToggleEnabled"
-        (change)="onFolderIndexedChange($event)">
-        Index this folder subtree
-      </mat-slide-toggle>
-      <p class="ext-rag-content-lake__hint">
-        Turning this on adds <code>cl:indexed</code> to the folder so batch and live ingestion treat its subtree as in scope.
-      </p>
+    <!-- ── Scope section ── -->
+    <div class="ext-rag-content-lake__section">
+      <h4 class="ext-rag-content-lake__section-title">Scope</h4>
+
+      <div class="ext-rag-content-lake__status">
+        <mat-icon>{{ scopeIcon }}</mat-icon>
+        <span>{{ scopeDescription }}</span>
+      </div>
+
+      <!-- Folder: cl:indexed toggle (scope root) -->
+      <div class="ext-rag-content-lake__controls" *ngIf="isFolder">
+        <mat-slide-toggle
+          [checked]="folderIndexed"
+          [disabled]="!folderToggleEnabled"
+          (change)="onFolderIndexedChange($event)">
+          Index this folder subtree
+        </mat-slide-toggle>
+        <p class="ext-rag-content-lake__hint">
+          Adds <code>cl:indexed</code> so batch and live ingestion treat this subtree as in scope.
+        </p>
+      </div>
+
+      <!-- Folder: exclusion toggle (inheriting, non-root) -->
+      <div class="ext-rag-content-lake__controls" *ngIf="showFolderExcludeToggle">
+        <mat-slide-toggle
+          [checked]="nodeExcluded"
+          [disabled]="!folderExcludeToggleEnabled"
+          (change)="onNodeExcludedChange($event)">
+          {{ nodeExcluded ? 'Restore this folder subtree to inherited Content Lake scope' : 'Exclude this folder subtree from Content Lake' }}
+        </mat-slide-toggle>
+        <p class="ext-rag-content-lake__hint">
+          Sets <code>cl:excludeFromLake</code> on this folder to opt its subtree out of an indexed ancestor.
+        </p>
+      </div>
+
+      <!-- File: exclusion toggle -->
+      <div class="ext-rag-content-lake__controls" *ngIf="isFile">
+        <ng-container *ngIf="showDocumentExcludeToggle; else fileNotManaged">
+          <mat-slide-toggle
+            [checked]="nodeExcluded"
+            [disabled]="!documentExcludeToggleEnabled"
+            (change)="onNodeExcludedChange($event)">
+            Exclude this document from Content Lake
+          </mat-slide-toggle>
+          <p class="ext-rag-content-lake__hint">
+            Sets <code>cl:excludeFromLake</code> on this document to opt it out of an indexed folder subtree.
+          </p>
+        </ng-container>
+        <ng-template #fileNotManaged>
+          <p class="ext-rag-content-lake__hint">
+            Document overrides are available only for documents that inherit scope from an indexed folder.
+          </p>
+        </ng-template>
+      </div>
     </div>
 
-    <div class="ext-rag-content-lake__controls" *ngIf="isFile">
-      <mat-slide-toggle
-        [checked]="documentExcluded"
-        [disabled]="!documentToggleEnabled"
-        (change)="onDocumentExcludedChange($event)">
-        Exclude this document from Content Lake
-      </mat-slide-toggle>
-      <p class="ext-rag-content-lake__hint" *ngIf="documentToggleEnabled; else fileNotManaged">
-        This writes <code>cl:excludeFromLake</code> on the document to opt it out of an indexed folder subtree.
+    <!-- ── Ingestion status section ── -->
+    <div class="ext-rag-content-lake__section">
+      <div class="ext-rag-content-lake__section-header">
+        <h4 class="ext-rag-content-lake__section-title">Ingestion status</h4>
+        <button mat-icon-button
+                class="ext-rag-content-lake__refresh"
+                (click)="onRefreshStatus()"
+                [disabled]="statusLoading"
+                aria-label="Refresh status">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+
+      <div class="ext-rag-content-lake__ingestion-status" [ngClass]="{
+        'ext-rag-content-lake__ingestion-status--pending': syncStatus === 'PENDING',
+        'ext-rag-content-lake__ingestion-status--indexed': syncStatus === 'INDEXED',
+        'ext-rag-content-lake__ingestion-status--failed': syncStatus === 'FAILED'
+      }">
+        <mat-icon *ngIf="!statusLoading">{{ statusIcon }}</mat-icon>
+        <mat-spinner *ngIf="statusLoading" diameter="18"></mat-spinner>
+        <span>{{ statusLabel }}</span>
+      </div>
+
+      <p class="ext-rag-content-lake__error" *ngIf="statusError">
+        {{ statusError }}
       </p>
-      <ng-template #fileNotManaged>
-        <p class="ext-rag-content-lake__hint">
-          Document overrides are available only for documents that already inherit scope from an indexed folder.
-        </p>
-      </ng-template>
     </div>
 
     <div class="ext-rag-content-lake__saving" *ngIf="saving">

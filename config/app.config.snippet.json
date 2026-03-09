@@ -6,6 +6,9 @@
       "baseUrl": "/api/rag",
       "searchPath": "/search/semantic",
       "promptPath": "/prompt"
+    },
+    "contentLakeService": {
+      "baseUrl": "/api/content-lake"
     }
   }
 }

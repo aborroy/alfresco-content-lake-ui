@@ -1,10 +1,12 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { DocumentListService, AlfrescoApiService, NodesApiService } from '@alfresco/adf-content-services';
 import { Node, NodeBodyUpdate, NodeEntry, NodesApi } from '@alfresco/js-api';
-import { NotificationService } from '@alfresco/adf-core';
+import { AppConfigService, NotificationService } from '@alfresco/adf-core';
 import { Observable, from, throwError } from 'rxjs';
 import { catchError, switchMap, tap } from 'rxjs/operators';
 
+import { ContentLakeNodeStatus } from '../models/rag.models';
 import {
   asNode,
   CONTENT_LAKE_EXCLUDE_PROPERTY_QNAME,
@@ -18,16 +20,25 @@ import {
 @Injectable({ providedIn: 'root' })
 export class ContentLakeScopeService {
   private nodesApiInstance: NodesApi | null = null;
+  private readonly statusBaseUrl: string;
 
   constructor(
     private readonly alfrescoApi: AlfrescoApiService,
     private readonly nodesApiService: NodesApiService,
     private readonly documentListService: DocumentListService,
-    private readonly notifications: NotificationService
-  ) {}
+    private readonly notifications: NotificationService,
+    private readonly http: HttpClient,
+    appConfig: AppConfigService
+  ) {
+    this.statusBaseUrl = appConfig.get<string>('plugins.contentLakeService.baseUrl', '/api/content-lake');
+  }
 
   getNode(nodeId: string): Observable<NodeEntry> {
     return from(this.nodesApi.getNode(nodeId, { include: ['path', 'properties', 'allowableOperations', 'permissions', 'aspectNames'] }));
+  }
+
+  getNodeStatus(nodeId: string): Observable<ContentLakeNodeStatus> {
+    return this.http.get<ContentLakeNodeStatus>(`${this.statusBaseUrl}/nodes/${nodeId}/status`);
   }
 
   setFolderIndexed(nodeLike: ContentLakeNodeLike, indexed: boolean): Observable<NodeEntry> {
@@ -54,8 +65,9 @@ export class ContentLakeScopeService {
     );
   }
 
-  setDocumentExcluded(nodeLike: ContentLakeNodeLike, excluded: boolean): Observable<NodeEntry> {
+  setNodeExcluded(nodeLike: ContentLakeNodeLike, excluded: boolean): Observable<NodeEntry> {
     const node = this.requireNode(nodeLike);
+    const isFolder = !!node.isFolder;
     return this.getNode(node.id).pipe(
       switchMap((nodeEntry) => {
         const aspectNames = this.copyAspectNames(nodeEntry.entry);
@@ -77,7 +89,9 @@ export class ContentLakeScopeService {
       }),
       tap(() =>
         this.notifications.showInfo(
-          excluded ? 'Document excluded from Content Lake' : 'Document restored to inherited Content Lake scope'
+          excluded
+            ? (isFolder ? 'Folder subtree excluded from Content Lake' : 'Document excluded from Content Lake')
+            : (isFolder ? 'Folder subtree restored to inherited scope' : 'Document restored to inherited scope')
         )
       )
     );

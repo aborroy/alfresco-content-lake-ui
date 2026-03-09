@@ -101,6 +101,22 @@ export interface MergedDocument {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Content Lake node status  –  batch-ingester API                   */
+/* ------------------------------------------------------------------ */
+
+export type ContentLakeSyncStatus = 'PENDING' | 'INDEXED' | 'FAILED';
+
+export interface ContentLakeNodeStatus {
+  nodeId: string;
+  status: ContentLakeSyncStatus | null;
+  exists: boolean;
+  folder: boolean;
+  inScope: boolean;
+  excluded: boolean;
+  error: string | null;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Chat UI state (local, not persisted)                              */
 /* ------------------------------------------------------------------ */
 

@@ -12,6 +12,7 @@ import { RagAuthInterceptor } from './lib/services/rag-auth.interceptor';
 import {
   asNode,
   canManageExcludeOverride,
+  canManageFolderExclude,
   hasIndexedAspect,
   isContentLakeEnabled,
   isExcludedFromLake
@@ -39,7 +40,8 @@ export function registerRagComponents(extensions: ExtensionService): () => void 
       'ext-rag.selection.folder.indexed': (context: any) => hasIndexedAspect(context.selection?.folder),
       'ext-rag.node.in-content-lake': (_context: any, node: NodeEntry | Node) => isContentLakeEnabled(getRuleNode(node)),
       'ext-rag.node.excluded-from-content-lake': (_context: any, node: NodeEntry | Node) => isExcludedFromLake(getRuleNode(node)),
-      'ext-rag.node.document-override-available': (_context: any, node: NodeEntry | Node) => canManageExcludeOverride(getRuleNode(node))
+      'ext-rag.node.document-override-available': (_context: any, node: NodeEntry | Node) => canManageExcludeOverride(getRuleNode(node)),
+      'ext-rag.node.folder-exclude-available': (_context: any, node: NodeEntry | Node) => canManageFolderExclude(getRuleNode(node))
     });
   };
 }

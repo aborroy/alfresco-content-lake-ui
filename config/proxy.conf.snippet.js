@@ -1,8 +1,9 @@
 /**
  * Proxy snippet for ACA development server.
  *
- * Add the '/api/rag' block to your existing `app/proxy.conf.js`.
- * Adjust the target to wherever rag-service is running.
+ * Add the '/api/rag' and '/api/content-lake' blocks to your existing
+ * `app/proxy.conf.js`.
+ * Adjust the targets to where rag-service and batch-ingester are running.
  *
  */
 module.exports = {
@@ -13,6 +14,14 @@ module.exports = {
   // --- RAG service -----------------------------------------------
   '/api/rag': {
     target: 'http://localhost:9091',
+    changeOrigin: true,
+    secure: false,
+    logLevel: 'debug',
+  },
+
+  // --- Content Lake status API ----------------------------------
+  '/api/content-lake': {
+    target: 'http://localhost:9090',
     changeOrigin: true,
     secure: false,
     logLevel: 'debug',

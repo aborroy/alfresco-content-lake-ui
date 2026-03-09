@@ -26,8 +26,8 @@ export class RagAuthInterceptor implements HttpInterceptor {
   constructor(private appConfig: AppConfigService) {
     const configured = this.appConfig.get<string>('plugins.ragService.baseUrl', '/api/rag');
 
-    // Always support proxy path
-    const matchers = new Set<string>(['/api/rag']);
+    // Always support proxy paths (RAG service + batch-ingester status API)
+    const matchers = new Set<string>(['/api/rag', '/api/content-lake']);
 
     // Also support configured value, whether it is absolute or relative
     try {

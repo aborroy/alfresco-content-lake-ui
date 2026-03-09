@@ -68,8 +68,31 @@ export function isContentLakeEnabled(nodeLike: ContentLakeNodeLike): boolean {
 
 export function canManageExcludeOverride(nodeLike: ContentLakeNodeLike): boolean {
   const node = asNode(nodeLike);
-  if (!node?.isFile) {
+  if (!node) {
     return false;
+  }
+
+  if (node.isFile) {
+    return hasIndexedAncestor(node) || isExcludedFromLake(node);
+  }
+
+  if (node.isFolder) {
+    return canManageFolderExclude(node);
+  }
+
+  return false;
+}
+
+export function canManageFolderExclude(nodeLike: ContentLakeNodeLike): boolean {
+  const node = asNode(nodeLike);
+  if (!node?.isFolder) {
+    return false;
+  }
+
+  // A folder that IS the indexed root can be toggled via cl:indexed.
+  // Only non-root folders inheriting scope can be excluded.
+  if (hasIndexedAspect(node)) {
+    return isExcludedFromLake(node);
   }
 
   return hasIndexedAncestor(node) || isExcludedFromLake(node);

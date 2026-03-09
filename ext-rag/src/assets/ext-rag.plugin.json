@@ -99,22 +99,24 @@
       ]
     },
 
-    "sidebar": [
-      {
-        "id": "ext-rag.sidebar-tab",
-        "order": 200,
-        "title": "Ask AI",
-        "icon": "psychology",
-        "component": "ext-rag.sidebar"
-      },
-      {
-        "id": "ext-rag.content-lake-sidebar-tab",
-        "order": 210,
-        "title": "Content Lake",
-        "icon": "offline_bolt",
-        "component": "ext-rag.content-lake-sidebar"
-      }
-    ],
+    "sidebar": {
+      "tabs": [
+        {
+          "id": "ext-rag.sidebar-tab",
+          "order": 200,
+          "title": "Ask AI",
+          "icon": "psychology",
+          "component": "ext-rag.sidebar"
+        },
+        {
+          "id": "ext-rag.content-lake-sidebar-tab",
+          "order": 210,
+          "title": "Content Lake",
+          "icon": "offline_bolt",
+          "component": "ext-rag.content-lake-sidebar"
+        }
+      ]
+    },
 
     "badges": [
       {
