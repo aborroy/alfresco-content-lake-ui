@@ -41,6 +41,10 @@ export class ContentLakeScopeService {
     return this.http.get<ContentLakeNodeStatus>(`${this.statusBaseUrl}/nodes/${nodeId}/status`);
   }
 
+  getNodesStatus(nodeIds: string[]): Observable<Record<string, ContentLakeNodeStatus>> {
+    return this.http.post<Record<string, ContentLakeNodeStatus>>(`${this.statusBaseUrl}/nodes/status`, { nodeIds });
+  }
+
   setFolderIndexed(nodeLike: ContentLakeNodeLike, indexed: boolean): Observable<NodeEntry> {
     const node = this.requireNode(nodeLike);
     return this.getNode(node.id).pipe(

@@ -14,6 +14,7 @@ export { ContentLakeStatusBadgeComponent } from './lib/components/content-lake-s
 export { RagApiService } from './lib/services/rag-api.service';
 export { RagAuthInterceptor } from './lib/services/rag-auth.interceptor';
 export { ContentLakeScopeService } from './lib/services/content-lake-scope.service';
+export { ContentLakeStatusBatchService } from './lib/services/content-lake-status-batch.service';
 
 /* Re-export models */
 export * from './lib/models/rag.models';

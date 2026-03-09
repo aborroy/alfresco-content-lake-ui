@@ -5,7 +5,7 @@ import { Node, NodeEntry } from '@alfresco/js-api';
 import { Subscription, catchError, of } from 'rxjs';
 
 import { ContentLakeSyncStatus } from '../../models/rag.models';
-import { ContentLakeScopeService } from '../../services/content-lake-scope.service';
+import { ContentLakeStatusBatchService } from '../../services/content-lake-status-batch.service';
 import { asNode } from '../../utils/content-lake-scope.utils';
 
 type DocumentStatus = ContentLakeSyncStatus | 'NOT_APPLICABLE' | 'NOT_AVAILABLE';
@@ -21,7 +21,7 @@ type DocumentStatus = ContentLakeSyncStatus | 'NOT_APPLICABLE' | 'NOT_AVAILABLE'
 export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
   @Input() data?: { node?: NodeEntry | Node };
 
-  private readonly scopeService = inject(ContentLakeScopeService);
+  private readonly batchService = inject(ContentLakeStatusBatchService);
   private readonly cdr = inject(ChangeDetectorRef);
   private statusRequest?: Subscription;
 
@@ -90,7 +90,7 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    this.statusRequest = this.scopeService
+    this.statusRequest = this.batchService
       .getNodeStatus(node.id)
       .pipe(catchError(() => of(null)))
       .subscribe((nodeStatus) => {

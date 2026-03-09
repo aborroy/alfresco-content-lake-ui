@@ -11,6 +11,7 @@ import { catchError, distinctUntilChanged, finalize, of, switchMap } from 'rxjs'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ContentLakeScopeService } from '../../services/content-lake-scope.service';
+import { ContentLakeStatusBatchService } from '../../services/content-lake-status-batch.service';
 import { ContentLakeNodeStatus, ContentLakeSyncStatus } from '../../models/rag.models';
 import {
   asNode,
@@ -44,6 +45,7 @@ export class ContentLakeSidebarComponent {
   constructor(
     private readonly store: Store<any>,
     private readonly scopeService: ContentLakeScopeService,
+    private readonly batchService: ContentLakeStatusBatchService,
     private readonly nodesApiService: NodesApiService
   ) {
     this.store
@@ -232,7 +234,7 @@ export class ContentLakeSidebarComponent {
       )
       .subscribe((updatedNode) => {
         this.nodeEntry = updatedNode;
-        this.refreshStatus();
+        this.refreshStatus(true);
       });
   }
 
@@ -253,15 +255,15 @@ export class ContentLakeSidebarComponent {
       )
       .subscribe((updatedNode) => {
         this.nodeEntry = updatedNode;
-        this.refreshStatus();
+        this.refreshStatus(true);
       });
   }
 
   onRefreshStatus(): void {
-    this.refreshStatus();
+    this.refreshStatus(true);
   }
 
-  private refreshStatus(): void {
+  private refreshStatus(invalidateCache = false): void {
     const nodeId = this.node?.id;
     if (!nodeId) {
       this.nodeStatus = null;
@@ -269,10 +271,14 @@ export class ContentLakeSidebarComponent {
       return;
     }
 
+    if (invalidateCache) {
+      this.batchService.invalidate(nodeId);
+    }
+
     this.statusLoading = true;
     this.cdr.markForCheck();
 
-    this.scopeService
+    this.batchService
       .getNodeStatus(nodeId)
       .pipe(
         catchError(() => of(null)),
