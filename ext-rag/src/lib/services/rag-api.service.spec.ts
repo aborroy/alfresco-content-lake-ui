@@ -49,7 +49,7 @@ describe('RagApiService', () => {
       createMockResponse([
         'event: token\ndata: {"token":"Hel"}\n\n',
         'event: token\ndata: {"token":"lo"}\n\n',
-        'event: metadata\ndata: {"answer":"Hello","question":"Q","model":"m","searchTimeMs":1,"generationTimeMs":2,"totalTimeMs":3,"sourcesUsed":0,"sources":[]}\n\n',
+        'event: metadata\ndata: {"answer":"Hello","question":"Q","model":"m","tokenCount":42,"searchTimeMs":1,"generationTimeMs":2,"totalTimeMs":3,"sourcesUsed":0,"sources":[]}\n\n',
         'event: done\ndata: {}\n\n'
       ])
     ));
@@ -65,6 +65,7 @@ describe('RagApiService', () => {
         expect(events[2].type).toBe('metadata');
         if (events[2].type === 'metadata') {
           expect(events[2].response.answer).toBe('Hello');
+          expect(events[2].response.tokenCount).toBe(42);
         }
         expect(events[3]).toEqual({ type: 'done' });
 
@@ -92,6 +93,28 @@ describe('RagApiService', () => {
         done();
       },
       complete: () => done.fail('Expected error, got complete')
+    });
+  });
+
+  it('streamPrompt_parsesCrLfDelimitedEvents', (done) => {
+    (globalThis as any).fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve(
+      createMockResponse([
+        'event: token\r\ndata: {"token":"Hi"}\r\n\r\n',
+        'event: done\r\ndata: {}\r\n\r\n'
+      ])
+    ));
+
+    const events: RagPromptStreamEvent[] = [];
+    service.streamPrompt('Q').subscribe({
+      next: (event) => events.push(event),
+      error: (error) => done.fail(error),
+      complete: () => {
+        expect(events).toEqual([
+          { type: 'token', token: 'Hi' },
+          { type: 'done' }
+        ]);
+        done();
+      }
     });
   });
 });

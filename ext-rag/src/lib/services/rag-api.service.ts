@@ -263,15 +263,15 @@ export class RagApiService {
     flushRemainder = false
   ): string {
     let rest = buffer;
-    let separatorIndex = rest.indexOf('\n\n');
+    let separatorIndex = this.findSseEventBoundary(rest);
 
     while (separatorIndex >= 0) {
       const rawEvent = rest.slice(0, separatorIndex).trim();
       if (rawEvent) {
         this.parseSseEvent(rawEvent, onEvent);
       }
-      rest = rest.slice(separatorIndex + 2);
-      separatorIndex = rest.indexOf('\n\n');
+      rest = rest.slice(separatorIndex + this.eventBoundaryLength(rest, separatorIndex));
+      separatorIndex = this.findSseEventBoundary(rest);
     }
 
     if (flushRemainder) {
@@ -283,6 +283,22 @@ export class RagApiService {
     }
 
     return rest;
+  }
+
+  private findSseEventBoundary(buffer: string): number {
+    const lfBoundary = buffer.indexOf('\n\n');
+    const crlfBoundary = buffer.indexOf('\r\n\r\n');
+    if (lfBoundary < 0) {
+      return crlfBoundary;
+    }
+    if (crlfBoundary < 0) {
+      return lfBoundary;
+    }
+    return Math.min(lfBoundary, crlfBoundary);
+  }
+
+  private eventBoundaryLength(buffer: string, boundaryIndex: number): number {
+    return buffer.startsWith('\r\n\r\n', boundaryIndex) ? 4 : 2;
   }
 
   private parseSseEvent(rawEvent: string, onEvent: (eventType: string, data: string) => void): void {
@@ -382,6 +398,7 @@ export class RagApiService {
       retrievalQuery: typeof c.retrievalQuery === 'string' ? c.retrievalQuery : undefined,
       historyTurnsUsed: typeof c.historyTurnsUsed === 'number' ? c.historyTurnsUsed : undefined,
       model: typeof c.model === 'string' ? c.model : 'unknown',
+      tokenCount: typeof c.tokenCount === 'number' ? c.tokenCount : undefined,
       searchTimeMs: typeof c.searchTimeMs === 'number' ? c.searchTimeMs : 0,
       generationTimeMs: typeof c.generationTimeMs === 'number' ? c.generationTimeMs : 0,
       totalTimeMs: typeof c.totalTimeMs === 'number' ? c.totalTimeMs : 0,

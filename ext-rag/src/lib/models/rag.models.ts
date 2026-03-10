@@ -103,6 +103,7 @@ export interface RagPromptResponse {
   retrievalQuery?: string;
   historyTurnsUsed?: number;
   model: string;
+  tokenCount?: number;
   searchTimeMs: number;
   generationTimeMs: number;
   totalTimeMs: number;
@@ -179,6 +180,7 @@ export interface ChatMessage {
   timestamp: Date;
   // Only present for assistant messages
   model?: string;
+  tokenCount?: number;
   totalMs?: number;
   searchTimeMs?: number;
   generationTimeMs?: number;

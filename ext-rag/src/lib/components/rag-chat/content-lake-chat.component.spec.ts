@@ -19,6 +19,7 @@ describe('RagChatComponent', () => {
     question: 'question',
     sessionId: 'session-from-backend',
     model: 'model',
+    tokenCount: 128,
     searchTimeMs: 5,
     generationTimeMs: 6,
     totalTimeMs: 11,
@@ -153,5 +154,13 @@ describe('RagChatComponent', () => {
 
     const assistant = component.messages.find((message) => message.role === 'assistant');
     expect(assistant?.content).toBe('Define chain\n- check properties');
+  });
+
+  it('assistantAnswer_mapsTokenCountFromMetadata', () => {
+    component.currentQuestion = 'How many tokens?';
+    component.ask();
+
+    const assistant = component.messages.find((message) => message.role === 'assistant');
+    expect(assistant?.tokenCount).toBe(128);
   });
 });

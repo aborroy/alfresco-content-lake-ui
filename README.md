@@ -298,6 +298,7 @@ expression (`cin_id = '<nodeId>'`).
   "retrievalQuery": "why the girl fell in the hole",
   "historyTurnsUsed": 2,
   "model": "model.gguf",
+  "tokenCount": 672,
   "searchTimeMs": 454,
   "generationTimeMs": 7084,
   "totalTimeMs": 7539,

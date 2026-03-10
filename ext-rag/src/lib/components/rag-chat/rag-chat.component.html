@@ -94,6 +94,9 @@
               <span *ngIf="msg.model" class="rag-chat__meta-chip">
                 <mat-icon>smart_toy</mat-icon> {{ msg.model }}
               </span>
+              <span *ngIf="msg.tokenCount !== undefined" class="rag-chat__meta-chip">
+                <mat-icon>toll</mat-icon> {{ msg.tokenCount }} tokens
+              </span>
               <span *ngIf="msg.totalMs" class="rag-chat__meta-chip">
                 <mat-icon>timer</mat-icon>
                 {{ msg.totalMs }}ms

@@ -345,6 +345,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
       this.streamRawContent.delete(assistantMsg.id);
     }
     assistantMsg.model = response.model;
+    assistantMsg.tokenCount = response.tokenCount;
     assistantMsg.totalMs = response.totalTimeMs;
     assistantMsg.searchTimeMs = response.searchTimeMs;
     assistantMsg.generationTimeMs = response.generationTimeMs;
