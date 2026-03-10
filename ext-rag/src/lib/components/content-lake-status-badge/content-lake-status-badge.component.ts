@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Node, NodeEntry } from '@alfresco/js-api';
 import { Subscription, catchError, of } from 'rxjs';
 
-import { ContentLakeSyncStatus } from '../../models/rag.models';
+import { ContentLakeFolderStatusSummary, ContentLakeSyncStatus } from '../../models/rag.models';
 import { ContentLakeStatusBatchService } from '../../services/content-lake-status-batch.service';
 import { asNode } from '../../utils/content-lake-scope.utils';
 
@@ -27,6 +27,7 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
 
   private status: DocumentStatus = 'NOT_AVAILABLE';
   private statusError: string | null = null;
+  private folderSummary: ContentLakeFolderStatusSummary | null = null;
 
   ngOnChanges(): void {
     this.refreshStatus();
@@ -67,11 +68,13 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
   get statusTooltip(): string {
     switch (this.status) {
       case 'PENDING':
-        return 'Content Lake status: Pending';
+        return this.appendFolderSummary('Content Lake status: Pending');
       case 'INDEXED':
-        return 'Content Lake status: Indexed';
+        return this.appendFolderSummary('Content Lake status: Indexed');
       case 'FAILED':
-        return this.statusError?.trim() ? `Content Lake status: Error (${this.statusError})` : 'Content Lake status: Error';
+        return this.appendFolderSummary(
+          this.statusError?.trim() ? `Content Lake status: Error (${this.statusError})` : 'Content Lake status: Error'
+        );
       case 'NOT_APPLICABLE':
         return 'Content Lake status: Not applicable';
       default:
@@ -83,8 +86,9 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
     const node = asNode(this.data?.node);
     this.statusRequest?.unsubscribe();
     this.statusError = null;
+    this.folderSummary = null;
 
-    if (!node?.id || !node.isFile) {
+    if (!node?.id || (!node.isFile && !node.isFolder)) {
       this.status = 'NOT_APPLICABLE';
       this.cdr.markForCheck();
       return;
@@ -97,6 +101,7 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
         if (!nodeStatus) {
           this.status = 'NOT_AVAILABLE';
           this.statusError = null;
+          this.folderSummary = null;
           this.cdr.markForCheck();
           return;
         }
@@ -104,13 +109,31 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
         if (!nodeStatus.inScope) {
           this.status = 'NOT_APPLICABLE';
           this.statusError = null;
+          this.folderSummary = null;
+          this.cdr.markForCheck();
+          return;
+        }
+
+        if (nodeStatus.folder && !nodeStatus.folderSummary && nodeStatus.status === null) {
+          this.status = 'NOT_AVAILABLE';
+          this.statusError = null;
+          this.folderSummary = null;
           this.cdr.markForCheck();
           return;
         }
 
         this.status = nodeStatus.status ?? 'PENDING';
         this.statusError = nodeStatus.error ?? null;
+        this.folderSummary = nodeStatus.folderSummary ?? null;
         this.cdr.markForCheck();
       });
+  }
+
+  private appendFolderSummary(base: string): string {
+    if (!this.folderSummary) {
+      return base;
+    }
+
+    return `${base} · ${this.folderSummary.totalDocuments} docs (${this.folderSummary.indexedDocuments} indexed, ${this.folderSummary.pendingDocuments} pending, ${this.folderSummary.failedDocuments} failed)`;
   }
 }

@@ -148,6 +148,13 @@ export interface MergedDocument {
 
 export type ContentLakeSyncStatus = 'PENDING' | 'INDEXED' | 'FAILED';
 
+export interface ContentLakeFolderStatusSummary {
+  totalDocuments: number;
+  indexedDocuments: number;
+  pendingDocuments: number;
+  failedDocuments: number;
+}
+
 export interface ContentLakeNodeStatus {
   nodeId: string;
   status: ContentLakeSyncStatus | null;
@@ -156,6 +163,7 @@ export interface ContentLakeNodeStatus {
   inScope: boolean;
   excluded: boolean;
   error: string | null;
+  folderSummary?: ContentLakeFolderStatusSummary | null;
 }
 
 /* ------------------------------------------------------------------ */

@@ -9,7 +9,7 @@ import { ContentLakeNodeStatus } from '../models/rag.models';
  * Batches individual node-status lookups into a single HTTP request.
  *
  * Badge components call {@link getNodeStatus} independently for each visible
- * document.  This service collects every ID requested during the same
+ * document/folder. This service collects every ID requested during the same
  * micro-task (i.e. the same Angular change-detection pass) and resolves them
  * all with one `POST /nodes/status` call.
  */
@@ -70,7 +70,10 @@ export class ContentLakeStatusBatchService {
     }
 
     this.http
-      .post<Record<string, ContentLakeNodeStatus>>(`${this.statusBaseUrl}/nodes/status`, { nodeIds })
+      .post<Record<string, ContentLakeNodeStatus>>(`${this.statusBaseUrl}/nodes/status`, {
+        nodeIds,
+        includeFolderAggregate: true
+      })
       .pipe(catchError(() => of({} as Record<string, ContentLakeNodeStatus>)))
       .subscribe((results) => {
         for (const [id, subject] of batch) {

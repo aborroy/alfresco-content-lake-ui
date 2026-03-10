@@ -141,7 +141,7 @@
         "tooltip": "Content Lake ingestion status",
         "component": "ext-rag.content-lake-status-badge",
         "rules": {
-          "visible": ["ext-rag.node.file", "ext-rag.node.in-content-lake"]
+          "visible": ["ext-rag.node.in-content-lake"]
         }
       },
       {
