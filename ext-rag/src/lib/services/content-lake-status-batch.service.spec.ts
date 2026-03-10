@@ -31,7 +31,32 @@ describe('ContentLakeStatusBatchService', () => {
     service = TestBed.inject(ContentLakeStatusBatchService);
   });
 
-  it('getNodeStatus_sendsIncludeFolderAggregateFlag', fakeAsync(() => {
+  it('getNodeStatus_batchesWithoutFolderAggregate', fakeAsync(() => {
+    const folderStatus: ContentLakeNodeStatus = {
+      nodeId: 'folder-1',
+      status: 'INDEXED',
+      exists: true,
+      folder: true,
+      inScope: true,
+      excluded: false,
+      error: null
+    };
+    httpSpy.post.and.returnValue(of({ 'folder-1': folderStatus }));
+
+    let observed: ContentLakeNodeStatus | null = null;
+    service.getNodeStatus('folder-1').subscribe((status) => {
+      observed = status;
+    });
+
+    flushMicrotasks();
+
+    expect(httpSpy.post).toHaveBeenCalledWith('/api/content-lake/nodes/status', {
+      nodeIds: ['folder-1']
+    });
+    expect(observed).toEqual(folderStatus);
+  }));
+
+  it('getNodeStatusDetailed_sendsIncludeFolderAggregateFlag', () => {
     const folderStatus: ContentLakeNodeStatus = {
       nodeId: 'folder-1',
       status: 'INDEXED',
@@ -50,16 +75,14 @@ describe('ContentLakeStatusBatchService', () => {
     httpSpy.post.and.returnValue(of({ 'folder-1': folderStatus }));
 
     let observed: ContentLakeNodeStatus | null = null;
-    service.getNodeStatus('folder-1').subscribe((status) => {
+    service.getNodeStatusDetailed('folder-1').subscribe((status) => {
       observed = status;
     });
-
-    flushMicrotasks();
 
     expect(httpSpy.post).toHaveBeenCalledWith('/api/content-lake/nodes/status', {
       nodeIds: ['folder-1'],
       includeFolderAggregate: true
     });
     expect(observed).toEqual(folderStatus);
-  }));
+  });
 });

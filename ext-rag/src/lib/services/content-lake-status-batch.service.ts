@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { AppConfigService } from '@alfresco/adf-core';
-import { Observable, ReplaySubject, catchError, of } from 'rxjs';
+import { Observable, ReplaySubject, catchError, map, of } from 'rxjs';
 
 import { ContentLakeNodeStatus } from '../models/rag.models';
 
@@ -12,6 +12,12 @@ import { ContentLakeNodeStatus } from '../models/rag.models';
  * document/folder. This service collects every ID requested during the same
  * micro-task (i.e. the same Angular change-detection pass) and resolves them
  * all with one `POST /nodes/status` call.
+ *
+ * Folder aggregate counts (indexed / pending / failed) are **not** included
+ * in the batch call because the server-side aggregation is expensive for
+ * large folders. Use {@link getNodeStatusDetailed} when you need the
+ * {@link ContentLakeFolderStatusSummary} for a single selected folder
+ * (e.g. the Content Lake sidebar).
  */
 @Injectable({ providedIn: 'root' })
 export class ContentLakeStatusBatchService {
@@ -27,7 +33,7 @@ export class ContentLakeStatusBatchService {
   }
 
   /**
-   * Returns the status for a single node.
+   * Returns the status for a single node (without folder aggregate counts).
    *
    * The actual HTTP call is deferred until the current micro-task ends so
    * that multiple calls made in the same render cycle are batched together.
@@ -40,6 +46,26 @@ export class ContentLakeStatusBatchService {
     }
     this.scheduleFlush();
     return subject.asObservable();
+  }
+
+  /**
+   * Returns the status for a single node **with** folder aggregate counts.
+   *
+   * This is a dedicated non-batched call intended for the sidebar where
+   * the user explicitly selects a folder and expects detailed ingestion
+   * statistics. It is NOT batched because `includeFolderAggregate` is
+   * expensive and should only be requested for one node at a time.
+   */
+  getNodeStatusDetailed(nodeId: string): Observable<ContentLakeNodeStatus | null> {
+    return this.http
+      .post<Record<string, ContentLakeNodeStatus>>(`${this.statusBaseUrl}/nodes/status`, {
+        nodeIds: [nodeId],
+        includeFolderAggregate: true
+      })
+      .pipe(
+        map((results) => results[nodeId] ?? null),
+        catchError(() => of(null))
+      );
   }
 
   /**
@@ -71,8 +97,7 @@ export class ContentLakeStatusBatchService {
 
     this.http
       .post<Record<string, ContentLakeNodeStatus>>(`${this.statusBaseUrl}/nodes/status`, {
-        nodeIds,
-        includeFolderAggregate: true
+        nodeIds
       })
       .pipe(catchError(() => of({} as Record<string, ContentLakeNodeStatus>)))
       .subscribe((results) => {

@@ -12,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { ContentLakeScopeService } from '../../services/content-lake-scope.service';
 import { ContentLakeStatusBatchService } from '../../services/content-lake-status-batch.service';
-import { ContentLakeNodeStatus, ContentLakeSyncStatus } from '../../models/rag.models';
+import { ContentLakeFolderStatusSummary, ContentLakeNodeStatus, ContentLakeSyncStatus } from '../../models/rag.models';
 import {
   asNode,
   canManageExcludeOverride,
@@ -211,6 +211,10 @@ export class ContentLakeSidebarComponent {
     }
   }
 
+  get folderSummary(): ContentLakeFolderStatusSummary | null {
+    return this.nodeStatus?.folderSummary ?? null;
+  }
+
   get statusError(): string | null {
     return this.nodeStatus?.error ?? null;
   }
@@ -278,8 +282,11 @@ export class ContentLakeSidebarComponent {
     this.statusLoading = true;
     this.cdr.markForCheck();
 
-    this.batchService
-      .getNodeStatus(nodeId)
+    const status$ = this.node?.isFolder
+      ? this.batchService.getNodeStatusDetailed(nodeId)
+      : this.batchService.getNodeStatus(nodeId);
+
+    status$
       .pipe(
         catchError(() => of(null)),
         finalize(() => {

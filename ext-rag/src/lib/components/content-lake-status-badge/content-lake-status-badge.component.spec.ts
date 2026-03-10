@@ -3,6 +3,7 @@ import { of } from 'rxjs';
 
 import { ContentLakeStatusBadgeComponent } from './content-lake-status-badge.component';
 import { ContentLakeStatusBatchService } from '../../services/content-lake-status-batch.service';
+import { CONTENT_LAKE_INDEXED_ASPECT } from '../../utils/content-lake-scope.utils';
 
 describe('ContentLakeStatusBadgeComponent', () => {
   let fixture: ComponentFixture<ContentLakeStatusBadgeComponent>;
@@ -23,31 +24,51 @@ describe('ContentLakeStatusBadgeComponent', () => {
     component = fixture.componentInstance;
   });
 
-  it('folderNode_rendersAggregatedStatusTooltip', () => {
-    batchServiceSpy.getNodeStatus.and.returnValue(of({
-      nodeId: 'folder-1',
-      status: 'FAILED',
-      exists: true,
-      folder: true,
-      inScope: true,
-      excluded: false,
-      error: '1 document(s) failed indexing',
-      folderSummary: {
-        totalDocuments: 10,
-        indexedDocuments: 8,
-        pendingDocuments: 1,
-        failedDocuments: 1
-      }
-    }));
-
+  it('folderInScope_showsScopeIndicator', () => {
     component.data = {
-      node: { id: 'folder-1', isFolder: true, isFile: false } as any
+      node: {
+        id: 'folder-1', isFolder: true, isFile: false,
+        aspectNames: [CONTENT_LAKE_INDEXED_ASPECT]
+      } as any
     };
     fixture.detectChanges();
 
-    expect(batchServiceSpy.getNodeStatus).toHaveBeenCalledWith('folder-1');
+    expect(batchServiceSpy.getNodeStatus).not.toHaveBeenCalled();
+    expect(component.statusIcon).toBe('check_circle');
+    expect(component.statusClass).toBe('ext-rag-status-badge--in-scope');
+    expect(component.statusTooltip).toBe('Content Lake: In scope');
+  });
+
+  it('folderOutOfScope_showsNotInScope', () => {
+    component.data = {
+      node: { id: 'folder-2', isFolder: true, isFile: false, aspectNames: [] } as any
+    };
+    fixture.detectChanges();
+
+    expect(batchServiceSpy.getNodeStatus).not.toHaveBeenCalled();
+    expect(component.statusIcon).toBe('remove_circle_outline');
+    expect(component.statusTooltip).toBe('Content Lake: Not in scope');
+  });
+
+  it('fileNode_usesServerStatus', () => {
+    batchServiceSpy.getNodeStatus.and.returnValue(of({
+      nodeId: 'file-1',
+      status: 'FAILED',
+      exists: true,
+      folder: false,
+      inScope: true,
+      excluded: false,
+      error: 'parse error'
+    }));
+
+    component.data = {
+      node: { id: 'file-1', isFolder: false, isFile: true } as any
+    };
+    fixture.detectChanges();
+
+    expect(batchServiceSpy.getNodeStatus).toHaveBeenCalledWith('file-1');
     expect(component.statusIcon).toBe('error');
-    expect(component.statusTooltip).toContain('10 docs (8 indexed, 1 pending, 1 failed)');
+    expect(component.statusTooltip).toBe('Content Lake status: Error (parse error)');
   });
 
   it('nonFileOrFolder_showsNotApplicable', () => {
@@ -59,25 +80,5 @@ describe('ContentLakeStatusBadgeComponent', () => {
     expect(batchServiceSpy.getNodeStatus).not.toHaveBeenCalled();
     expect(component.statusIcon).toBe('remove_circle_outline');
     expect(component.statusTooltip).toBe('Content Lake status: Not applicable');
-  });
-
-  it('folderNode_withoutAggregateStatus_showsNotAvailable', () => {
-    batchServiceSpy.getNodeStatus.and.returnValue(of({
-      nodeId: 'folder-legacy',
-      status: null,
-      exists: true,
-      folder: true,
-      inScope: true,
-      excluded: false,
-      error: null
-    }));
-
-    component.data = {
-      node: { id: 'folder-legacy', isFolder: true, isFile: false } as any
-    };
-    fixture.detectChanges();
-
-    expect(component.statusIcon).toBe('help_outline');
-    expect(component.statusTooltip).toBe('Content Lake status: Not available');
   });
 });

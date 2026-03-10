@@ -92,6 +92,34 @@
       <p class="ext-rag-content-lake__error" *ngIf="statusError">
         {{ statusError }}
       </p>
+
+      <!-- Folder ingestion breakdown -->
+      <div class="ext-rag-content-lake__folder-summary" *ngIf="folderSummary">
+        <div class="ext-rag-content-lake__summary-total">
+          {{ folderSummary.totalDocuments }} documents
+        </div>
+
+        <div class="ext-rag-content-lake__summary-bar">
+          <div class="ext-rag-content-lake__summary-bar-indexed"
+               [style.width.%]="folderSummary.totalDocuments ? (folderSummary.indexedDocuments / folderSummary.totalDocuments * 100) : 0">
+          </div>
+          <div class="ext-rag-content-lake__summary-bar-failed"
+               [style.width.%]="folderSummary.totalDocuments ? (folderSummary.failedDocuments / folderSummary.totalDocuments * 100) : 0">
+          </div>
+        </div>
+
+        <div class="ext-rag-content-lake__summary-counts">
+          <span class="ext-rag-content-lake__summary-count ext-rag-content-lake__summary-count--indexed">
+            <mat-icon>check_circle</mat-icon> {{ folderSummary.indexedDocuments }} indexed
+          </span>
+          <span class="ext-rag-content-lake__summary-count ext-rag-content-lake__summary-count--pending">
+            <mat-icon>schedule</mat-icon> {{ folderSummary.pendingDocuments }} pending
+          </span>
+          <span class="ext-rag-content-lake__summary-count ext-rag-content-lake__summary-count--failed" *ngIf="folderSummary.failedDocuments > 0">
+            <mat-icon>error</mat-icon> {{ folderSummary.failedDocuments }} failed
+          </span>
+        </div>
+      </div>
     </div>
 
     <div class="ext-rag-content-lake__saving" *ngIf="saving">
