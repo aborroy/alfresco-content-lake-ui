@@ -50,6 +50,14 @@
             "title": "Ask AI about this document",
             "actions": { "click": "ext-rag.ask-about" },
             "rules": { "visible": ["app.selection.file"] }
+          },
+          {
+            "id": "ext-rag.toolbar.ask-about-folder",
+            "order": 92,
+            "icon": "psychology",
+            "title": "Ask AI about this folder",
+            "actions": { "click": "ext-rag.ask-about" },
+            "rules": { "visible": ["app.selection.folder"] }
           }
         ]
       }
@@ -79,6 +87,14 @@
         "title": "Ask AI about this document",
         "actions": { "click": "ext-rag.ask-about" },
         "rules": { "visible": ["app.selection.file"] }
+      },
+      {
+        "id": "ext-rag.context.ask-about-folder",
+        "order": 95,
+        "icon": "psychology",
+        "title": "Ask AI about this folder",
+        "actions": { "click": "ext-rag.ask-about" },
+        "rules": { "visible": ["app.selection.folder"] }
       }
     ],
 

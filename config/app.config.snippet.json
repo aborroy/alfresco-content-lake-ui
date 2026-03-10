@@ -5,7 +5,8 @@
     "ragService": {
       "baseUrl": "/api/rag",
       "searchPath": "/search/semantic",
-      "promptPath": "/prompt"
+      "promptPath": "/prompt",
+      "streamPath": "/chat/stream"
     },
     "contentLakeService": {
       "baseUrl": "/api/content-lake"

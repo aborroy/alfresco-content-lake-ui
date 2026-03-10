@@ -57,7 +57,32 @@ export interface SemanticSearchResponse {
 
 export interface RagPromptRequest {
   question: string;
+  sessionId?: string;
+  resetSession?: boolean;
+  topK?: number;
+  minScore?: number;
+  filter?: string;
+  embeddingType?: string;
+  systemPrompt?: string;
+  includeContext?: boolean;
+}
+
+/**
+ * UI helper options for prompt calls.
+ *
+ * `nodeId` is translated client-side into a backend `filter`
+ * expression (`cin_id = '<nodeId>'`) for compatibility.
+ */
+export interface RagPromptOptions {
   nodeId?: string;
+  sessionId?: string;
+  resetSession?: boolean;
+  topK?: number;
+  minScore?: number;
+  filter?: string;
+  embeddingType?: string;
+  systemPrompt?: string;
+  includeContext?: boolean;
 }
 
 /** A single source chunk returned by /prompt */
@@ -74,13 +99,30 @@ export interface PromptSource {
 export interface RagPromptResponse {
   answer: string;
   question: string;
+  sessionId?: string;
+  retrievalQuery?: string;
+  historyTurnsUsed?: number;
   model: string;
   searchTimeMs: number;
   generationTimeMs: number;
   totalTimeMs: number;
   sourcesUsed: number;
   sources: PromptSource[];
+  context?: PromptContextChunk[];
 }
+
+export interface PromptContextChunk {
+  rank: number;
+  score: number;
+  text: string;
+  sourceName?: string;
+  sourcePath?: string;
+}
+
+export type RagPromptStreamEvent =
+  | { type: 'token'; token: string }
+  | { type: 'metadata'; response: RagPromptResponse }
+  | { type: 'done' };
 
 /* ------------------------------------------------------------------ */
 /*  Merged view models  –  chunks grouped by document for the UI      */

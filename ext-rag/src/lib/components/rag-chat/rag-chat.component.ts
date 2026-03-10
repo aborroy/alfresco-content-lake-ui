@@ -19,7 +19,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { take } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
-import { ChatMessage, MergedDocument, PromptSource } from '../../models/rag.models';
+import { RagChatSessionService, RagChatSessionSummary } from '../../services/rag-chat-session.service';
+import { ChatMessage, MergedDocument, PromptSource, RagPromptOptions, RagPromptResponse } from '../../models/rag.models';
 
 let _nextId = 0;
 
@@ -48,23 +49,31 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   /** Pre-scope all questions to a specific document. */
   @Input() scopedNodeId: string | null = null;
   @Input() scopedNodeName: string | null = null;
+  @Input() scopedNodeIsFolder = false;
+  @Input() scopedNodePath: string | null = null;
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
   messages: ChatMessage[] = [];
+  sessionSummaries: RagChatSessionSummary[] = [];
   currentQuestion = '';
   thinking = false;
   currentRepositoryId: string | null = null;
   repositoryResolved = false;
+  activeSessionId: string | null = null;
 
   private shouldScroll = false;
+  private autoScrollEnabled = true;
 
   constructor(
     private ragApi: RagApiService,
-    private discoveryApi: DiscoveryApiService
+    private discoveryApi: DiscoveryApiService,
+    private chatSessions: RagChatSessionService
   ) {}
 
   ngOnInit(): void {
+    this.initializeConversationState();
+
     this.discoveryApi.getEcmProductInfo()
       .pipe(take(1))
       .subscribe({
@@ -90,6 +99,10 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     if (!q || this.thinking) {
       return;
     }
+    const sessionId = this.activeSessionId ?? this.chatSessions.ensureActiveSession();
+    const isFirstTurn = this.messages.length === 0;
+    this.activeSessionId = sessionId;
+    const scopeOptions = this.buildScopeOptions();
 
     // Add user message
     const userMsg: ChatMessage = {
@@ -113,31 +126,63 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     this.currentQuestion = '';
     this.thinking = true;
     this.shouldScroll = true;
+    this.persistMessages();
 
-    this.ragApi.prompt(q, this.scopedNodeId ?? undefined).subscribe({
-      next: (res) => {
-        assistantMsg.content = res.answer;
-        assistantMsg.model = res.model;
-        assistantMsg.totalMs = res.totalTimeMs;
-        assistantMsg.searchTimeMs = res.searchTimeMs;
-        assistantMsg.generationTimeMs = res.generationTimeMs;
-        assistantMsg.sources = this.mergeSources(res.sources);
-        assistantMsg.loading = false;
-        this.thinking = false;
-        this.shouldScroll = true;
-      },
-      error: (err) => {
-        assistantMsg.loading = false;
-        assistantMsg.error = err?.error?.message || err?.message || 'Request failed';
-        this.thinking = false;
-        this.shouldScroll = true;
-      }
-    });
+    this.streamAssistantResponse(q, sessionId, isFirstTurn, assistantMsg, scopeOptions);
+  }
+
+  newConversation(): void {
+    if (this.thinking) {
+      return;
+    }
+    this.activeSessionId = this.chatSessions.createSession();
+    this.messages = [];
+    this.currentQuestion = '';
+    this.autoScrollEnabled = true;
+    this.refreshSessionSummaries();
+    this.shouldScroll = true;
+  }
+
+  openConversation(sessionId: string): void {
+    if (this.thinking || sessionId === this.activeSessionId) {
+      return;
+    }
+    this.activeSessionId = sessionId;
+    this.chatSessions.activateSession(sessionId);
+    this.messages = this.chatSessions.getMessages(sessionId);
+    this.autoScrollEnabled = true;
+    this.refreshSessionSummaries();
+    this.shouldScroll = true;
+  }
+
+  onMessagesScroll(): void {
+    const el = this.messagesContainer?.nativeElement as HTMLElement | undefined;
+    if (!el) {
+      return;
+    }
+    this.autoScrollEnabled = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 96);
   }
 
   clearScope(): void {
     this.scopedNodeId = null;
     this.scopedNodeName = null;
+    this.scopedNodeIsFolder = false;
+    this.scopedNodePath = null;
+  }
+
+  scopeLabel(): string {
+    return this.scopedNodeName?.trim() || 'All content';
+  }
+
+  scopeIcon(): string {
+    if (!this.scopedNodeId) {
+      return 'travel_explore';
+    }
+    return this.scopedNodeIsFolder ? 'folder' : 'description';
+  }
+
+  trackSession(_index: number, session: RagChatSessionSummary): string {
+    return session.sessionId;
   }
 
   private mergeSources(sources: PromptSource[]): MergedDocument[] {
@@ -193,5 +238,148 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     } catch (_) {
       // ignore
     }
+  }
+
+  private initializeConversationState(): void {
+    this.activeSessionId = this.chatSessions.ensureActiveSession();
+    this.messages = this.chatSessions.getMessages(this.activeSessionId);
+    this.refreshSessionSummaries();
+    this.shouldScroll = true;
+  }
+
+  private refreshSessionSummaries(): void {
+    this.sessionSummaries = this.chatSessions.listSessions();
+  }
+
+  private persistMessages(): void {
+    if (!this.activeSessionId) {
+      return;
+    }
+    this.chatSessions.saveMessages(this.activeSessionId, this.messages);
+    this.refreshSessionSummaries();
+  }
+
+  private streamAssistantResponse(
+    question: string,
+    sessionId: string,
+    isFirstTurn: boolean,
+    assistantMsg: ChatMessage,
+    scopeOptions: Pick<RagPromptOptions, 'nodeId' | 'filter'>
+  ): void {
+    this.ragApi.streamPrompt(question, {
+      ...scopeOptions,
+      sessionId,
+      resetSession: isFirstTurn
+    }).subscribe({
+      next: (event) => {
+        if (event.type === 'token') {
+          assistantMsg.content += event.token;
+          this.shouldScroll = this.autoScrollEnabled;
+          this.persistMessages();
+          return;
+        }
+
+        if (event.type === 'metadata') {
+          this.applyPromptResponse(assistantMsg, event.response);
+          this.finishAssistantMessage(assistantMsg);
+          this.persistMessages();
+          return;
+        }
+
+        this.finishAssistantMessage(assistantMsg);
+        this.persistMessages();
+      },
+      error: (err) => {
+        if (this.isStreamEndpointUnavailable(err)) {
+          this.fallbackToPrompt(question, sessionId, isFirstTurn, assistantMsg, scopeOptions);
+          return;
+        }
+
+        assistantMsg.loading = false;
+        assistantMsg.error = err?.error?.message || err?.message || 'Request failed';
+        this.thinking = false;
+        this.shouldScroll = this.autoScrollEnabled;
+        this.persistMessages();
+      }
+    });
+  }
+
+  private fallbackToPrompt(
+    question: string,
+    sessionId: string,
+    isFirstTurn: boolean,
+    assistantMsg: ChatMessage,
+    scopeOptions: Pick<RagPromptOptions, 'nodeId' | 'filter'>
+  ): void {
+    this.ragApi.prompt(question, {
+      ...scopeOptions,
+      sessionId,
+      resetSession: isFirstTurn
+    }).subscribe({
+      next: (response) => {
+        this.applyPromptResponse(assistantMsg, response);
+        this.finishAssistantMessage(assistantMsg);
+        this.persistMessages();
+      },
+      error: (err) => {
+        assistantMsg.loading = false;
+        assistantMsg.error = err?.error?.message || err?.message || 'Request failed';
+        this.thinking = false;
+        this.shouldScroll = this.autoScrollEnabled;
+        this.persistMessages();
+      }
+    });
+  }
+
+  private applyPromptResponse(assistantMsg: ChatMessage, response: RagPromptResponse): void {
+    if (response.sessionId) {
+      this.activeSessionId = response.sessionId;
+    }
+    if (response.answer) {
+      assistantMsg.content = response.answer;
+    }
+    assistantMsg.model = response.model;
+    assistantMsg.totalMs = response.totalTimeMs;
+    assistantMsg.searchTimeMs = response.searchTimeMs;
+    assistantMsg.generationTimeMs = response.generationTimeMs;
+    assistantMsg.sources = this.mergeSources(response.sources ?? []);
+    assistantMsg.error = undefined;
+  }
+
+  private finishAssistantMessage(assistantMsg: ChatMessage): void {
+    assistantMsg.loading = false;
+    this.thinking = false;
+    this.shouldScroll = this.autoScrollEnabled;
+  }
+
+  private isStreamEndpointUnavailable(error: any): boolean {
+    const message = String(error?.message ?? '').toLowerCase();
+    return message.includes('stream request failed (404)')
+      || message.includes('stream request failed (405)');
+  }
+
+  private buildScopeOptions(): Pick<RagPromptOptions, 'nodeId' | 'filter'> {
+    const nodeId = this.scopedNodeId?.trim();
+    if (!nodeId) {
+      return {};
+    }
+
+    if (!this.scopedNodeIsFolder) {
+      return { nodeId };
+    }
+
+    const pathPrefix = this.scopedNodePath?.trim();
+    if (!pathPrefix) {
+      return { nodeId };
+    }
+
+    return {
+      nodeId,
+      filter: `cin_ingestProperties.alfresco_path LIKE '${this.escapeHxql(pathPrefix)}%'`
+    };
+  }
+
+  private escapeHxql(value: string): string {
+    return value.replace(/'/g, "''");
   }
 }

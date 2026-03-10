@@ -32,6 +32,8 @@ export class RagPageComponent implements OnInit {
 
   prefilledNodeId: string | null = null;
   prefilledNodeName: string | null = null;
+  prefilledNodeIsFolder = false;
+  prefilledNodePath: string | null = null;
 
   constructor(private route: ActivatedRoute) {}
 
@@ -39,6 +41,8 @@ export class RagPageComponent implements OnInit {
     this.route.queryParams.subscribe(params => {
       this.prefilledNodeId = params['nodeId'] || null;
       this.prefilledNodeName = params['name'] || null;
+      this.prefilledNodeIsFolder = params['nodeType'] === 'folder';
+      this.prefilledNodePath = params['path'] || null;
     });
   }
 }

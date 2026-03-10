@@ -15,7 +15,9 @@ UI extension for [alfresco-content-lake](https://github.com/aborroy/alfresco-con
 * Semantic search panel: free-text query with configurable `topK` / `minScore`, results grouped by document with similarity scores and expandable chunk snippets
 * Chat-style Q&A: natural language questions answered via RAG, displaying the generated answer, model used, timing breakdown, and referenced source documents with chunks
 * Document-scoped mode: right-click any document and choose *"Ask AI about this document"* to open the chat pre-scoped to that file
-* Sidebar tab: compact chat panel in the info-drawer, automatically scoped to the selected document.
+* Folder-scoped mode: right-click any folder and choose *"Ask AI about this folder"* to scope retrieval to that folder subtree
+* Sidebar tab: compact chat panel in the info-drawer, automatically scoped to the selected document or folder.
+* Conversation sessions: local session list with restore and *New conversation* support across route changes
 * Content Lake scope controls: right-click a folder to add or remove the `cl:indexed` aspect, or use the dedicated *Content Lake* sidebar tab
 * Document override: set `cl:excludeFromLake` on a document from the *Content Lake* sidebar to opt it out of an indexed folder subtree
 * Visual scope indicators: badges show when a folder or document is in Content Lake scope, and when a document is explicitly excluded
@@ -73,7 +75,10 @@ Add to `app/src/app.config.json` (see [`config/app.config.snippet.json`](config/
 {
   "plugins": {
     "ragService": {
-      "baseUrl": "/api/rag"
+      "baseUrl": "/api/rag",
+      "searchPath": "/search/semantic",
+      "promptPath": "/prompt",
+      "streamPath": "/chat/stream"
     },
     "contentLakeService": {
       "baseUrl": "/api/content-lake"
@@ -268,14 +273,18 @@ The UI groups results by `sourceDocument.nodeId`, showing one entry per document
 
 ### `POST /api/rag/prompt`
 
-RAG question-answering, optionally scoped to a single document.
+RAG question-answering with optional conversation session controls.
+For document scope, the UI translates `nodeId` into a backend `filter`
+expression (`cin_id = '<nodeId>'`).
 
 **Request:**
 
 ```json
 {
   "question": "Why the girl fell in the hole?",
-  "nodeId": "e0f2943f-5e11-4f78-b294-3f5e116f7823"
+  "sessionId": "demo-session-1",
+  "resetSession": false,
+  "filter": "cin_id = 'e0f2943f-5e11-4f78-b294-3f5e116f7823'"
 }
 ```
 
@@ -285,6 +294,9 @@ RAG question-answering, optionally scoped to a single document.
 {
   "answer": "She fell because the rabbit-hole dipped suddenly downward…",
   "question": "Why the girl fell in the hole?",
+  "sessionId": "demo-session-1",
+  "retrievalQuery": "why the girl fell in the hole",
+  "historyTurnsUsed": 2,
   "model": "model.gguf",
   "searchTimeMs": 454,
   "generationTimeMs": 7084,
@@ -304,3 +316,14 @@ RAG question-answering, optionally scoped to a single document.
 ```
 
 The UI groups sources by `nodeId`, showing one entry per document with all source chunks.
+
+### `POST /api/rag/chat/stream`
+
+Streaming RAG endpoint consumed by the chat panel for progressive rendering.
+
+Expected SSE events:
+
+- `event: token` with incremental token payload (`token`, `delta`, `text`, or `content`)
+- `event: metadata` with final response payload (`RagPromptResponse`)
+- `event: done` to close the stream
+- `event: error` for terminal stream errors
