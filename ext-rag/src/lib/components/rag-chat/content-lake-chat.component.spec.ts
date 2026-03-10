@@ -121,4 +121,37 @@ describe('RagChatComponent', () => {
 
     expect(scrollSpy).toHaveBeenCalled();
   });
+
+  it('assistantAnswer_stripsMarkdownSyntaxFromMetadataResponse', () => {
+    ragApiSpy.streamPrompt.and.returnValue(of(
+      {
+        type: 'metadata',
+        response: {
+          ...promptResponse,
+          answer: '## LDAP setup\n**Define** _chain_ and [restart](https://example.com)\n- check properties'
+        }
+      },
+      { type: 'done' }
+    ));
+
+    component.currentQuestion = 'How do I configure LDAP?';
+    component.ask();
+
+    const assistant = component.messages.find((message) => message.role === 'assistant');
+    expect(assistant?.content).toBe('LDAP setup\nDefine chain and restart\n- check properties');
+  });
+
+  it('assistantAnswer_stripsMarkdownSyntaxFromStreamingTokens', () => {
+    ragApiSpy.streamPrompt.and.returnValue(of(
+      { type: 'token', token: '**Define** _chain_' },
+      { type: 'token', token: '\n- check properties' },
+      { type: 'done' }
+    ));
+
+    component.currentQuestion = 'How do I configure LDAP?';
+    component.ask();
+
+    const assistant = component.messages.find((message) => message.role === 'assistant');
+    expect(assistant?.content).toBe('Define chain\n- check properties');
+  });
 });

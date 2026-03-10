@@ -64,6 +64,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
 
   private shouldScroll = false;
   private autoScrollEnabled = true;
+  private streamRawContent = new Map<string, string>();
 
   constructor(
     private ragApi: RagApiService,
@@ -273,7 +274,9 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     }).subscribe({
       next: (event) => {
         if (event.type === 'token') {
-          assistantMsg.content += event.token;
+          const raw = `${this.streamRawContent.get(assistantMsg.id) ?? ''}${event.token}`;
+          this.streamRawContent.set(assistantMsg.id, raw);
+          assistantMsg.content = this.toPlainText(raw);
           this.shouldScroll = this.autoScrollEnabled;
           this.persistMessages();
           return;
@@ -295,6 +298,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
           return;
         }
 
+        this.streamRawContent.delete(assistantMsg.id);
         assistantMsg.loading = false;
         assistantMsg.error = err?.error?.message || err?.message || 'Request failed';
         this.thinking = false;
@@ -322,6 +326,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
         this.persistMessages();
       },
       error: (err) => {
+        this.streamRawContent.delete(assistantMsg.id);
         assistantMsg.loading = false;
         assistantMsg.error = err?.error?.message || err?.message || 'Request failed';
         this.thinking = false;
@@ -336,7 +341,8 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
       this.activeSessionId = response.sessionId;
     }
     if (response.answer) {
-      assistantMsg.content = response.answer;
+      assistantMsg.content = this.toPlainText(response.answer);
+      this.streamRawContent.delete(assistantMsg.id);
     }
     assistantMsg.model = response.model;
     assistantMsg.totalMs = response.totalTimeMs;
@@ -347,6 +353,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   }
 
   private finishAssistantMessage(assistantMsg: ChatMessage): void {
+    this.streamRawContent.delete(assistantMsg.id);
     assistantMsg.loading = false;
     this.thinking = false;
     this.shouldScroll = this.autoScrollEnabled;
@@ -381,5 +388,32 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
 
   private escapeHxql(value: string): string {
     return value.replace(/'/g, "''");
+  }
+
+  private toPlainText(value: string): string {
+    let text = value.replace(/\r\n?/g, '\n');
+
+    text = text
+      .replace(/```[^\n]*\n?/g, '')
+      .replace(/```/g, '')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+      .replace(/^\s{0,3}>\s?/gm, '')
+      .replace(/^\s*[-*+]\s+/gm, '- ')
+      .replace(/^\s*(\d+)\.\s+/gm, '$1. ')
+      .replace(/(\*\*|__)([^*_]+)\1/g, '$2')
+      .replace(/(\*|_)([^*_]+)\1/g, '$2')
+      .replace(/~~([^~]+)~~/g, '$1');
+
+    text = text
+      .split('\n')
+      .map((line) => line.trimEnd())
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    return text;
   }
 }
