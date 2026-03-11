@@ -43,6 +43,10 @@ export function registerRagComponents(extensions: ExtensionService): () => void 
       'ext-rag.node.file': (_context: any, node: NodeEntry | Node) => !!getRuleNode(node)?.isFile,
       'ext-rag.node.in-content-lake': (_context: any, node: NodeEntry | Node) => isContentLakeEnabled(getRuleNode(node)),
       'ext-rag.node.excluded-from-content-lake': (_context: any, node: NodeEntry | Node) => isExcludedFromLake(getRuleNode(node)),
+      'ext-rag.node.content-lake-aware': (_context: any, node: NodeEntry | Node) => {
+        const n = getRuleNode(node);
+        return isContentLakeEnabled(n) || isExcludedFromLake(n);
+      },
       'ext-rag.node.document-override-available': (_context: any, node: NodeEntry | Node) => canManageExcludeOverride(getRuleNode(node)),
       'ext-rag.node.folder-exclude-available': (_context: any, node: NodeEntry | Node) => canManageFolderExclude(getRuleNode(node))
     });

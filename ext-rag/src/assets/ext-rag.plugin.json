@@ -141,23 +141,7 @@
         "tooltip": "Content Lake ingestion status",
         "component": "ext-rag.content-lake-status-badge",
         "rules": {
-          "visible": ["ext-rag.node.in-content-lake"]
-        }
-      },
-      {
-        "id": "ext-rag.badge.content-lake-enabled",
-        "icon": "offline_bolt",
-        "tooltip": "Content Lake enabled",
-        "rules": {
-          "visible": "ext-rag.node.in-content-lake"
-        }
-      },
-      {
-        "id": "ext-rag.badge.content-lake-excluded",
-        "icon": "block",
-        "tooltip": "Excluded from Content Lake",
-        "rules": {
-          "visible": "ext-rag.node.excluded-from-content-lake"
+          "visible": ["ext-rag.node.content-lake-aware"]
         }
       }
     ]
