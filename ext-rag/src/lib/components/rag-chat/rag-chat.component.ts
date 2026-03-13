@@ -381,9 +381,10 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
       return { nodeId };
     }
 
+    const escapedPrefix = this.escapeHxql(pathPrefix);
     return {
       nodeId,
-      filter: `cin_ingestProperties.alfresco_path LIKE '${this.escapeHxql(pathPrefix)}%'`
+      filter: `(cin_ingestProperties.alfresco_path >= '${escapedPrefix}' AND cin_ingestProperties.alfresco_path < '${escapedPrefix}\uFFFF')`
     };
   }
 

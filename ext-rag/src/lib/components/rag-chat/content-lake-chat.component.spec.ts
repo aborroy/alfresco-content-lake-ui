@@ -102,7 +102,7 @@ describe('RagChatComponent', () => {
       'Summarize this folder',
       jasmine.objectContaining({
         nodeId: 'folder-123',
-        filter: "cin_ingestProperties.alfresco_path LIKE '/Company Home/Sites/finance/documentLibrary%'"
+        filter: "(cin_ingestProperties.alfresco_path >= '/Company Home/Sites/finance/documentLibrary' AND cin_ingestProperties.alfresco_path < '/Company Home/Sites/finance/documentLibrary\uFFFF')"
       })
     );
   });
