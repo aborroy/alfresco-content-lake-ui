@@ -101,8 +101,7 @@ describe('RagChatComponent', () => {
     expect(ragApiSpy.streamPrompt).toHaveBeenCalledWith(
       'Summarize this folder',
       jasmine.objectContaining({
-        nodeId: 'folder-123',
-        filter: "(cin_ingestProperties.alfresco_path >= '/alfresco-sync/repo-main/Company Home/Sites/finance/documentLibrary' AND cin_ingestProperties.alfresco_path < '/alfresco-sync/repo-main/Company Home/Sites/finance/documentLibrary\uFFFF')"
+        filter: "(cin_sourceId = 'repo-main') AND (cin_ingestProperties.alfresco_path >= '/Company Home/Sites/finance/documentLibrary' AND cin_ingestProperties.alfresco_path < '/Company Home/Sites/finance/documentLibrary\uFFFF')"
       })
     );
   });
