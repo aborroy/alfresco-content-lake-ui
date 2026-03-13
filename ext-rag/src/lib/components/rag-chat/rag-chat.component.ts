@@ -381,7 +381,10 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
       return { nodeId };
     }
 
-    const escapedPrefix = this.escapeHxql(pathPrefix);
+    const indexedPrefix = this.currentRepositoryId
+      ? `/alfresco-sync/${this.currentRepositoryId}${pathPrefix}`
+      : pathPrefix;
+    const escapedPrefix = this.escapeHxql(indexedPrefix);
     return {
       nodeId,
       filter: `(cin_ingestProperties.alfresco_path >= '${escapedPrefix}' AND cin_ingestProperties.alfresco_path < '${escapedPrefix}\uFFFF')`
