@@ -30,6 +30,17 @@
         Asking about: <strong>{{ scopeLabel() }}</strong>
       </div>
       <div class="rag-chat__toolbar-actions">
+        <mat-form-field appearance="outline" class="rag-chat__source-filter">
+          <mat-label>Source</mat-label>
+          <select matNativeControl
+                  [ngModel]="displaySourceType()"
+                  (ngModelChange)="setSelectedSourceType($event)"
+                  [disabled]="thinking || !!scopedNodeId">
+            <option value="">All</option>
+            <option value="alfresco">Alfresco</option>
+            <option value="nuxeo">Nuxeo</option>
+          </select>
+        </mat-form-field>
         <button *ngIf="compact"
                 mat-stroked-button
                 type="button"
@@ -121,13 +132,33 @@
                        [queryParams]="{ location: '/rag' }">
                       {{ src.name }}
                     </a>
-                    <span *ngIf="!canOpenInRepository(src)"
+                    <a *ngIf="!canOpenInRepository(src) && canOpenInSource(src)"
+                       [href]="src.openInSourceUrl"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                      {{ src.name }}
+                    </a>
+                    <span *ngIf="!canOpenInRepository(src) && !canOpenInSource(src)"
                           class="rag-chat__source-title"
                           [title]="openLinkHint(src)">
                       {{ src.name }}
                     </span>
                     <span class="rag-chat__source-path">{{ src.path }}</span>
-                    <span *ngIf="src.sourceId" class="rag-chat__source-path">Source: {{ src.sourceId }}</span>
+                    <span *ngIf="src.sourceType || src.sourceId" class="rag-chat__source-path">
+                      Source: {{ sourceSummary(src) }}
+                    </span>
+                    <a *ngIf="!canOpenInRepository(src) && canOpenInSource(src)"
+                       [href]="src.openInSourceUrl"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="rag-chat__source-path">
+                      {{ openSourceLabel(src) }}
+                    </a>
+                    <span *ngIf="!canOpenInRepository(src) && !canOpenInSource(src)"
+                          class="rag-chat__source-path"
+                          [title]="openLinkHint(src)">
+                      {{ openLinkHint(src) }}
+                    </span>
                   </div>
                   <div *ngFor="let chunk of src.chunks" class="rag-chat__source-chunk">
                     {{ chunk.text }}

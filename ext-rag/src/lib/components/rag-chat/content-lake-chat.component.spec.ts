@@ -7,7 +7,7 @@ import { of } from 'rxjs';
 import { RagChatComponent } from './rag-chat.component';
 import { RagApiService } from '../../services/rag-api.service';
 import { RagChatSessionService } from '../../services/rag-chat-session.service';
-import { RagPromptResponse } from '../../models/rag.models';
+import { RagPromptResponse, RagPromptStreamEvent } from '../../models/rag.models';
 
 describe('RagChatComponent', () => {
   let fixture: ComponentFixture<RagChatComponent>;
@@ -32,8 +32,8 @@ describe('RagChatComponent', () => {
     ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['prompt', 'streamPrompt']);
     ragApiSpy.prompt.and.returnValue(of(promptResponse));
     ragApiSpy.streamPrompt.and.returnValue(of(
-      { type: 'metadata', response: promptResponse },
-      { type: 'done' }
+      { type: 'metadata', response: promptResponse } as RagPromptStreamEvent,
+      { type: 'done' } as RagPromptStreamEvent
     ));
 
     await TestBed.configureTestingModule({
@@ -101,9 +101,35 @@ describe('RagChatComponent', () => {
     expect(ragApiSpy.streamPrompt).toHaveBeenCalledWith(
       'Summarize this folder',
       jasmine.objectContaining({
-        filter: "(cin_sourceId = 'repo-main') AND (cin_ingestProperties.alfresco_path >= '/Company Home/Sites/finance/documentLibrary' AND cin_ingestProperties.alfresco_path < '/Company Home/Sites/finance/documentLibrary\uFFFF')"
+        sourceType: 'alfresco',
+        filter: "(cin_sourceId = 'alfresco:repo-main') AND (cin_ingestProperties.source_path >= '/Company Home/Sites/finance/documentLibrary' AND cin_ingestProperties.source_path < '/Company Home/Sites/finance/documentLibrary\uFFFF')"
       })
     );
+  });
+
+  it('canOpenInRepository_matchesNamespacedCurrentAlfrescoSource', () => {
+    expect(component.canOpenInRepository({
+      nodeId: 'node-123',
+      sourceId: 'alfresco:repo-main',
+      sourceType: 'alfresco',
+      name: 'Budget.xlsx',
+      path: '/Company Home/Sites/finance/documentLibrary',
+      score: 0.92,
+      chunks: []
+    })).toBeTrue();
+  });
+
+  it('canOpenInSource_returnsTrueForExternalMixedSourceResults', () => {
+    expect(component.canOpenInSource({
+      nodeId: 'doc-789',
+      sourceId: 'nuxeo:nuxeo-demo',
+      sourceType: 'nuxeo',
+      name: 'Quarterly Report.pdf',
+      path: '/default-domain/workspaces/finance',
+      score: 0.88,
+      chunks: [],
+      openInSourceUrl: 'http://localhost:8081/nuxeo/ui/#!/browse/default-domain/workspaces/finance/Quarterly%20Report.pdf'
+    })).toBeTrue();
   });
 
   it('autoScroll_triggersOnNewMessage', () => {
@@ -130,8 +156,8 @@ describe('RagChatComponent', () => {
           ...promptResponse,
           answer: '## LDAP setup\n**Define** _chain_ and [restart](https://example.com)\n- check properties'
         }
-      },
-      { type: 'done' }
+      } as RagPromptStreamEvent,
+      { type: 'done' } as RagPromptStreamEvent
     ));
 
     component.currentQuestion = 'How do I configure LDAP?';
@@ -143,9 +169,9 @@ describe('RagChatComponent', () => {
 
   it('assistantAnswer_stripsMarkdownSyntaxFromStreamingTokens', () => {
     ragApiSpy.streamPrompt.and.returnValue(of(
-      { type: 'token', token: '**Define** _chain_' },
-      { type: 'token', token: '\n- check properties' },
-      { type: 'done' }
+      { type: 'token', token: '**Define** _chain_' } as RagPromptStreamEvent,
+      { type: 'token', token: '\n- check properties' } as RagPromptStreamEvent,
+      { type: 'done' } as RagPromptStreamEvent
     ));
 
     component.currentQuestion = 'How do I configure LDAP?';
@@ -161,5 +187,38 @@ describe('RagChatComponent', () => {
 
     const assistant = component.messages.find((message) => message.role === 'assistant');
     expect(assistant?.tokenCount).toBe(128);
+  });
+
+  it('assistantAnswer_preservesSourceAwareLinksInMergedSources', () => {
+    ragApiSpy.streamPrompt.and.returnValue(of(
+      {
+        type: 'metadata',
+        response: {
+          ...promptResponse,
+          sourcesUsed: 1,
+          sources: [
+            {
+              documentId: 'doc-789',
+              nodeId: 'doc-789',
+              sourceId: 'nuxeo:nuxeo-demo',
+              sourceType: 'nuxeo',
+              name: 'Quarterly Report.pdf',
+              path: '/default-domain/workspaces/finance',
+              chunkText: 'Revenue increased by 12%.',
+              score: 0.88,
+              openInSourceUrl: 'http://localhost:8081/nuxeo/ui/#!/browse/default-domain/workspaces/finance/Quarterly%20Report.pdf'
+            }
+          ]
+        }
+      } as RagPromptStreamEvent,
+      { type: 'done' } as RagPromptStreamEvent
+    ));
+
+    component.currentQuestion = 'What changed in finance?';
+    component.ask();
+
+    const assistant = component.messages.find((message) => message.role === 'assistant');
+    expect(assistant?.sources?.[0].sourceType).toBe('nuxeo');
+    expect(assistant?.sources?.[0].openInSourceUrl).toContain('/nuxeo/ui/#!/browse/');
   });
 });

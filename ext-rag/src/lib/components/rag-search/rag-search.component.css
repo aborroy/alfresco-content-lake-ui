@@ -17,6 +17,10 @@
   width: 100px;
 }
 
+.rag-search__param--source {
+  width: 140px;
+}
+
 .rag-search__error {
   display: flex;
   align-items: center;

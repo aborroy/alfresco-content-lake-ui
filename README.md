@@ -14,6 +14,7 @@ UI extension for [alfresco-content-lake](https://github.com/aborroy/alfresco-con
 
 * Semantic search panel: free-text query with configurable `topK` / `minScore`, results grouped by document with similarity scores and expandable chunk snippets
 * Chat-style Q&A: natural language questions answered via RAG, displaying the generated answer, model used, timing breakdown, and referenced source documents with chunks
+* Mixed-source awareness: search results and citations show the originating source system, support an optional source filter, and open Nuxeo hits in Nuxeo Web UI via backend-provided deep links
 * Document-scoped mode: right-click any document and choose *"Ask AI about this document"* to open the chat pre-scoped to that file
 * Folder-scoped mode: right-click any folder and choose *"Ask AI about this folder"* to scope retrieval to that folder subtree
 * Sidebar tab: compact chat panel in the info-drawer, automatically scoped to the selected document or folder.
@@ -231,7 +232,8 @@ Semantic search across indexed content-lake chunks.
 {
   "query": "a girl falls in a crater",
   "topK": 5,
-  "minScore": 0.5
+  "minScore": 0.5,
+  "sourceType": "nuxeo"
 }
 ```
 
@@ -252,10 +254,13 @@ Semantic search across indexed content-lake chunks.
       "chunkText": "found herself falling down a very deep well…",
       "sourceDocument": {
         "documentId": "c225f4d5-882b-4b99-81d1-3226af2560a4",
-        "nodeId": "e0f2943f-5e11-4f78-b294-3f5e116f7823",
+        "nodeId": "4d2a93aa-6a11-431f-9202-58f16062ef5b",
+        "sourceId": "nuxeo:nuxeo-demo",
+        "sourceType": "nuxeo",
         "name": "down-the-rabbit-hole.pdf",
-        "path": "/Company Home/Sites/private/documentLibrary",
-        "mimeType": "application/pdf"
+        "path": "/default-domain/workspaces/literature",
+        "mimeType": "application/pdf",
+        "openInSourceUrl": "http://localhost:8081/nuxeo/ui/#!/browse/default-domain/workspaces/literature/down-the-rabbit-hole.pdf"
       },
       "chunkMetadata": {
         "embeddingId": "334f91ec-4ed1-41b8-a1aa-bca6c2b1431e",
@@ -269,7 +274,7 @@ Semantic search across indexed content-lake chunks.
 }
 ```
 
-The UI groups results by `sourceDocument.nodeId`, showing one entry per document with all matching chunks listed underneath.
+The UI groups results by `sourceDocument.nodeId`, showing one entry per document with all matching chunks listed underneath. Alfresco results from the current repository still open in the ACA viewer, while external-source results use `openInSourceUrl`.
 
 ### `POST /api/rag/prompt`
 
@@ -284,6 +289,7 @@ expression (`cin_id = '<nodeId>'`).
   "question": "Why the girl fell in the hole?",
   "sessionId": "demo-session-1",
   "resetSession": false,
+  "sourceType": "alfresco",
   "filter": "cin_id = 'e0f2943f-5e11-4f78-b294-3f5e116f7823'"
 }
 ```
@@ -306,11 +312,14 @@ expression (`cin_id = '<nodeId>'`).
   "sources": [
     {
       "documentId": "c225f4d5-882b-4b99-81d1-3226af2560a4",
-      "nodeId": "e0f2943f-5e11-4f78-b294-3f5e116f7823",
+      "nodeId": "4d2a93aa-6a11-431f-9202-58f16062ef5b",
+      "sourceId": "nuxeo:nuxeo-demo",
+      "sourceType": "nuxeo",
       "name": "down-the-rabbit-hole.pdf",
-      "path": "/Company Home/Sites/private/documentLibrary",
+      "path": "/default-domain/workspaces/literature",
       "chunkText": "found herself falling down a very deep well…",
-      "score": 0.6628
+      "score": 0.6628,
+      "openInSourceUrl": "http://localhost:8081/nuxeo/ui/#!/browse/default-domain/workspaces/literature/down-the-rabbit-hole.pdf"
     }
   ]
 }

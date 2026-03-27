@@ -20,7 +20,7 @@ import { take } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
 import { RagChatSessionService, RagChatSessionSummary } from '../../services/rag-chat-session.service';
-import { ChatMessage, MergedDocument, PromptSource, RagPromptOptions, RagPromptResponse } from '../../models/rag.models';
+import { ChatMessage, ContentSourceType, MergedDocument, PromptSource, RagPromptOptions, RagPromptResponse } from '../../models/rag.models';
 
 let _nextId = 0;
 
@@ -57,6 +57,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   messages: ChatMessage[] = [];
   sessionSummaries: RagChatSessionSummary[] = [];
   currentQuestion = '';
+  selectedSourceType: ContentSourceType | '' = '';
   thinking = false;
   currentRepositoryId: string | null = null;
   repositoryResolved = false;
@@ -196,10 +197,12 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
         map.set(this.documentKey(src.nodeId, src.sourceId), {
           nodeId: src.nodeId,
           sourceId: src.sourceId,
+          sourceType: src.sourceType,
           name: src.name,
           path: src.path,
           score: src.score,
-          chunks: [{ text: src.chunkText, score: src.score }]
+          chunks: [{ text: src.chunkText, score: src.score }],
+          openInSourceUrl: src.openInSourceUrl
         });
       }
     }
@@ -207,23 +210,74 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   }
 
   canOpenInRepository(doc: MergedDocument): boolean {
+    const currentSourceId = this.currentAlfrescoSourceId();
     return this.repositoryResolved
       && !!doc.nodeId
-      && (!doc.sourceId || doc.sourceId === this.currentRepositoryId);
+      && doc.sourceType === 'alfresco'
+      && !!currentSourceId
+      && doc.sourceId === currentSourceId;
+  }
+
+  canOpenInSource(doc: MergedDocument): boolean {
+    return !!doc.openInSourceUrl && !this.canOpenInRepository(doc);
+  }
+
+  openSourceLabel(doc: MergedDocument): string {
+    return `Open in ${this.sourceSystemLabel(doc)}`;
   }
 
   openLinkHint(doc: MergedDocument): string {
     if (!this.repositoryResolved) {
       return 'Resolving current repository';
     }
-    if (!doc.sourceId || doc.sourceId === this.currentRepositoryId) {
-      return 'Open in repository';
+    if (this.canOpenInRepository(doc)) {
+      return 'Open in Alfresco';
     }
-    return `Stored in source repository ${doc.sourceId}`;
+    if (this.canOpenInSource(doc)) {
+      return this.openSourceLabel(doc);
+    }
+    return `No open link available for ${this.sourceSummary(doc)}`;
+  }
+
+  sourceSummary(doc: MergedDocument): string {
+    if (doc.sourceType && doc.sourceId) {
+      return `${this.sourceSystemLabel(doc)} · ${doc.sourceId}`;
+    }
+    if (doc.sourceType) {
+      return this.sourceSystemLabel(doc);
+    }
+    return doc.sourceId ?? 'Unknown source';
+  }
+
+  displaySourceType(): ContentSourceType | '' {
+    return this.scopedNodeId ? 'alfresco' : this.selectedSourceType;
+  }
+
+  setSelectedSourceType(value: string | null | undefined): void {
+    this.selectedSourceType = value === 'alfresco' || value === 'nuxeo' ? value : '';
   }
 
   private documentKey(nodeId: string, sourceId?: string): string {
     return `${sourceId ?? ''}::${nodeId}`;
+  }
+
+  private currentAlfrescoSourceId(): string | null {
+    const repositoryId = this.currentRepositoryId?.trim();
+    if (!repositoryId) {
+      return null;
+    }
+    return repositoryId.startsWith('alfresco:') ? repositoryId : `alfresco:${repositoryId}`;
+  }
+
+  private sourceSystemLabel(doc: MergedDocument): string {
+    switch (doc.sourceType) {
+      case 'alfresco':
+        return 'Alfresco';
+      case 'nuxeo':
+        return 'Nuxeo';
+      default:
+        return 'source system';
+    }
   }
 
   private resolveRepositoryId(repository: unknown): string | null {
@@ -265,7 +319,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     sessionId: string,
     isFirstTurn: boolean,
     assistantMsg: ChatMessage,
-    scopeOptions: Pick<RagPromptOptions, 'nodeId' | 'filter'>
+    scopeOptions: Pick<RagPromptOptions, 'nodeId' | 'filter' | 'sourceType'>
   ): void {
     this.ragApi.streamPrompt(question, {
       ...scopeOptions,
@@ -313,7 +367,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     sessionId: string,
     isFirstTurn: boolean,
     assistantMsg: ChatMessage,
-    scopeOptions: Pick<RagPromptOptions, 'nodeId' | 'filter'>
+    scopeOptions: Pick<RagPromptOptions, 'nodeId' | 'filter' | 'sourceType'>
   ): void {
     this.ragApi.prompt(question, {
       ...scopeOptions,
@@ -366,33 +420,43 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
       || message.includes('stream request failed (405)');
   }
 
-  private buildScopeOptions(): Pick<RagPromptOptions, 'nodeId' | 'filter'> {
+  private buildScopeOptions(): Pick<RagPromptOptions, 'nodeId' | 'filter' | 'sourceType'> {
+    const sourceType = this.resolvePromptSourceType();
     const nodeId = this.scopedNodeId?.trim();
     if (!nodeId) {
-      return {};
+      return sourceType ? { sourceType } : {};
     }
 
     if (!this.scopedNodeIsFolder) {
-      return { nodeId };
+      return sourceType ? { nodeId, sourceType } : { nodeId };
     }
 
     const pathPrefix = this.scopedNodePath?.trim();
     if (!pathPrefix) {
-      return {};
+      return sourceType ? { sourceType } : {};
     }
 
     const escapedPrefix = this.escapeHxql(pathPrefix);
     const filterClauses = [
-      `(cin_ingestProperties.alfresco_path >= '${escapedPrefix}' AND cin_ingestProperties.alfresco_path < '${escapedPrefix}\uFFFF')`
+      `(cin_ingestProperties.source_path >= '${escapedPrefix}' AND cin_ingestProperties.source_path < '${escapedPrefix}\uFFFF')`
     ];
 
-    if (this.currentRepositoryId?.trim()) {
-      filterClauses.unshift(`(cin_sourceId = '${this.escapeHxql(this.currentRepositoryId.trim())}')`);
+    const currentSourceId = this.currentAlfrescoSourceId();
+    if (currentSourceId) {
+      filterClauses.unshift(`(cin_sourceId = '${this.escapeHxql(currentSourceId)}')`);
     }
 
     return {
-      filter: filterClauses.join(' AND ')
+      filter: filterClauses.join(' AND '),
+      ...(sourceType ? { sourceType } : {})
     };
+  }
+
+  private resolvePromptSourceType(): ContentSourceType | undefined {
+    if (this.scopedNodeId) {
+      return 'alfresco';
+    }
+    return this.selectedSourceType || undefined;
   }
 
   private escapeHxql(value: string): string {

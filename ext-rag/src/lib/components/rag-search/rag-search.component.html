@@ -21,6 +21,15 @@
       <input matInput type="number" [(ngModel)]="minScore" min="0" max="1" step="0.05" />
     </mat-form-field>
 
+    <mat-form-field appearance="outline" class="rag-search__param rag-search__param--source">
+      <mat-label>Source</mat-label>
+      <select matNativeControl [(ngModel)]="selectedSourceType">
+        <option value="">All</option>
+        <option value="alfresco">Alfresco</option>
+        <option value="nuxeo">Nuxeo</option>
+      </select>
+    </mat-form-field>
+
     <button mat-raised-button color="primary"
             [disabled]="!query.trim() || loading"
             (click)="runSearch()">
@@ -63,8 +72,8 @@
             {{ doc.path }}
           </p>
           <p>
-            <span *ngIf="doc.sourceId" class="rag-search__source-id">
-              Source: {{ doc.sourceId }}
+            <span *ngIf="doc.sourceType || doc.sourceId" class="rag-search__source-id">
+              Source: {{ sourceSummary(doc) }}
             </span>
           </p>
           <p>
@@ -72,9 +81,18 @@
                [routerLink]="['/search', { outlets: { viewer: ['view', doc.nodeId] } }]"
                [queryParams]="{ location: '/rag' }"
                class="rag-search__open-link">
-              Open in repository
+              Open in Alfresco
             </a>
-            <span *ngIf="!canOpenInRepository(doc)" class="rag-search__open-link" [title]="openLinkHint(doc)">
+            <a *ngIf="!canOpenInRepository(doc) && canOpenInSource(doc)"
+               [href]="doc.openInSourceUrl"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="rag-search__open-link">
+              {{ openSourceLabel(doc) }}
+            </a>
+            <span *ngIf="!canOpenInRepository(doc) && !canOpenInSource(doc)"
+                  class="rag-search__open-link"
+                  [title]="openLinkHint(doc)">
               {{ openLinkHint(doc) }}
             </span>
           </p>

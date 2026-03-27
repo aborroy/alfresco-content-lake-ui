@@ -12,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { take } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
-import { SearchResultItem, MergedDocument } from '../../models/rag.models';
+import { ContentSourceType, SearchResultItem, MergedDocument } from '../../models/rag.models';
 
 @Component({
   selector: 'ext-rag-search',
@@ -36,6 +36,7 @@ export class RagSearchComponent implements OnInit {
   query = '';
   topK = 5;
   minScore = 0.5;
+  selectedSourceType: ContentSourceType | '' = '';
   loading = false;
   error: string | null = null;
   searchTimeMs = 0;
@@ -71,7 +72,7 @@ export class RagSearchComponent implements OnInit {
     this.loading = true;
     this.error = null;
 
-    this.ragApi.search(q, this.topK, this.minScore).subscribe({
+    this.ragApi.search(q, this.topK, this.minScore, this.selectedSourceType || undefined).subscribe({
       next: (res) => {
         this.searchTimeMs = res.searchTimeMs;
         this.documents = this.mergeResults(res.results);
@@ -97,10 +98,12 @@ export class RagSearchComponent implements OnInit {
         map.set(this.documentKey(nodeId, sourceId), {
           nodeId,
           sourceId,
+          sourceType: item.sourceDocument.sourceType,
           name: item.sourceDocument.name,
           path: item.sourceDocument.path,
           score: item.score,
-          chunks: [{ text: item.chunkText, score: item.score }]
+          chunks: [{ text: item.chunkText, score: item.score }],
+          openInSourceUrl: item.sourceDocument.openInSourceUrl
         });
       }
     }
@@ -108,23 +111,66 @@ export class RagSearchComponent implements OnInit {
   }
 
   canOpenInRepository(doc: MergedDocument): boolean {
+    const currentSourceId = this.currentAlfrescoSourceId();
     return this.repositoryResolved
       && !!doc.nodeId
-      && (!doc.sourceId || doc.sourceId === this.currentRepositoryId);
+      && doc.sourceType === 'alfresco'
+      && !!currentSourceId
+      && doc.sourceId === currentSourceId;
+  }
+
+  canOpenInSource(doc: MergedDocument): boolean {
+    return !!doc.openInSourceUrl && !this.canOpenInRepository(doc);
+  }
+
+  openSourceLabel(doc: MergedDocument): string {
+    return `Open in ${this.sourceSystemLabel(doc)}`;
   }
 
   openLinkHint(doc: MergedDocument): string {
     if (!this.repositoryResolved) {
       return 'Resolving current repository';
     }
-    if (!doc.sourceId || doc.sourceId === this.currentRepositoryId) {
-      return 'Open in repository';
+    if (this.canOpenInRepository(doc)) {
+      return 'Open in Alfresco';
     }
-    return `Stored in source repository ${doc.sourceId}`;
+    if (this.canOpenInSource(doc)) {
+      return this.openSourceLabel(doc);
+    }
+    return `No open link available for ${this.sourceSummary(doc)}`;
+  }
+
+  sourceSummary(doc: MergedDocument): string {
+    if (doc.sourceType && doc.sourceId) {
+      return `${this.sourceSystemLabel(doc)} · ${doc.sourceId}`;
+    }
+    if (doc.sourceType) {
+      return this.sourceSystemLabel(doc);
+    }
+    return doc.sourceId ?? 'Unknown source';
   }
 
   private documentKey(nodeId: string, sourceId?: string): string {
     return `${sourceId ?? ''}::${nodeId}`;
+  }
+
+  private currentAlfrescoSourceId(): string | null {
+    const repositoryId = this.currentRepositoryId?.trim();
+    if (!repositoryId) {
+      return null;
+    }
+    return repositoryId.startsWith('alfresco:') ? repositoryId : `alfresco:${repositoryId}`;
+  }
+
+  private sourceSystemLabel(doc: MergedDocument): string {
+    switch (doc.sourceType) {
+      case 'alfresco':
+        return 'Alfresco';
+      case 'nuxeo':
+        return 'Nuxeo';
+      default:
+        return 'source system';
+    }
   }
 
   private resolveRepositoryId(repository: unknown): string | null {

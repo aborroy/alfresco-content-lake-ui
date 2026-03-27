@@ -92,6 +92,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
   padding: 10px 14px;
   border-bottom: 1px solid #e5ebf3;
   background: linear-gradient(90deg, #f4f8ff 0%, #fcfdff 100%);
@@ -113,6 +114,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rag-chat__source-filter {
+  width: 148px;
 }
 
 .rag-chat__messages {
@@ -229,6 +235,7 @@
   align-items: center;
   gap: 6px;
   font-size: 13px;
+  flex-wrap: wrap;
 }
 
 .rag-chat__source-header a {

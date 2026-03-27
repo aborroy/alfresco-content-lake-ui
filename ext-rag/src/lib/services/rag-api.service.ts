@@ -4,6 +4,7 @@ import { AppConfigService } from '@alfresco/adf-core';
 import { Observable } from 'rxjs';
 
 import {
+  ContentSourceType,
   SemanticSearchRequest,
   SemanticSearchResponse,
   RagPromptRequest,
@@ -49,8 +50,13 @@ export class RagApiService {
   /**
    * Semantic search across indexed content-lake chunks.
    */
-  search(query: string, topK = 5, minScore = 0.5): Observable<SemanticSearchResponse> {
-    const body: SemanticSearchRequest = { query, topK, minScore };
+  search(query: string, topK = 5, minScore = 0.5, sourceType?: ContentSourceType): Observable<SemanticSearchResponse> {
+    const body: SemanticSearchRequest = {
+      query,
+      topK,
+      minScore,
+      ...(sourceType ? { sourceType } : {})
+    };
     return this.http.post<SemanticSearchResponse>(
       `${this.baseUrl}${this.searchPath}`,
       body
@@ -178,6 +184,7 @@ export class RagApiService {
       ...(options.topK !== undefined ? { topK: options.topK } : {}),
       ...(options.minScore !== undefined ? { minScore: options.minScore } : {}),
       ...(filter ? { filter } : {}),
+      ...(options.sourceType ? { sourceType: options.sourceType } : {}),
       ...(options.embeddingType ? { embeddingType: options.embeddingType } : {}),
       ...(options.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
       ...(options.includeContext !== undefined ? { includeContext: options.includeContext } : {})

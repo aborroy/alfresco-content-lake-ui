@@ -9,19 +9,24 @@
 /*  Semantic Search  –  API response                                  */
 /* ------------------------------------------------------------------ */
 
+export type ContentSourceType = 'alfresco' | 'nuxeo';
+
 export interface SemanticSearchRequest {
   query: string;
   topK?: number;
   minScore?: number;
+  sourceType?: ContentSourceType;
 }
 
 export interface SearchResultSourceDocument {
   documentId: string;
   nodeId: string;
   sourceId?: string;
+  sourceType?: ContentSourceType;
   name: string;
   path: string;
   mimeType: string;
+  openInSourceUrl?: string;
 }
 
 export interface SearchResultChunkMetadata {
@@ -62,6 +67,7 @@ export interface RagPromptRequest {
   topK?: number;
   minScore?: number;
   filter?: string;
+  sourceType?: ContentSourceType;
   embeddingType?: string;
   systemPrompt?: string;
   includeContext?: boolean;
@@ -80,6 +86,7 @@ export interface RagPromptOptions {
   topK?: number;
   minScore?: number;
   filter?: string;
+  sourceType?: ContentSourceType;
   embeddingType?: string;
   systemPrompt?: string;
   includeContext?: boolean;
@@ -90,10 +97,12 @@ export interface PromptSource {
   documentId: string;
   nodeId: string;
   sourceId?: string;
+  sourceType?: ContentSourceType;
   name: string;
   path: string;
   chunkText: string;
   score: number;
+  openInSourceUrl?: string;
 }
 
 export interface RagPromptResponse {
@@ -118,6 +127,8 @@ export interface PromptContextChunk {
   text: string;
   sourceName?: string;
   sourcePath?: string;
+  sourceType?: ContentSourceType;
+  openInSourceUrl?: string;
 }
 
 export type RagPromptStreamEvent =
@@ -137,10 +148,12 @@ export interface ChunkSnippet {
 export interface MergedDocument {
   nodeId: string;
   sourceId?: string;
+  sourceType?: ContentSourceType;
   name: string;
   path: string;
   score: number;
   chunks: ChunkSnippet[];
+  openInSourceUrl?: string;
 }
 
 /* ------------------------------------------------------------------ */

@@ -1,16 +1,20 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { AppConfigService } from '@alfresco/adf-core';
+import { of } from 'rxjs';
 
 import { RagApiService } from './rag-api.service';
 import { RagPromptStreamEvent } from '../models/rag.models';
 
 describe('RagApiService', () => {
   let service: RagApiService;
+  let httpSpy: jasmine.SpyObj<HttpClient>;
   let originalFetch: typeof fetch | undefined;
 
   beforeEach(() => {
     originalFetch = (globalThis as any).fetch;
+    httpSpy = jasmine.createSpyObj<HttpClient>('HttpClient', ['post']);
+    httpSpy.post.and.returnValue(of({}));
 
     const appConfigSpy = jasmine.createSpyObj<AppConfigService>('AppConfigService', ['get']);
     appConfigSpy.get.and.callFake((key: string, defaultValue: any) => {
@@ -28,7 +32,7 @@ describe('RagApiService', () => {
         RagApiService,
         {
           provide: HttpClient,
-          useValue: jasmine.createSpyObj<HttpClient>('HttpClient', ['post'])
+          useValue: httpSpy
         },
         {
           provide: AppConfigService,
@@ -42,6 +46,36 @@ describe('RagApiService', () => {
 
   afterEach(() => {
     (globalThis as any).fetch = originalFetch;
+  });
+
+  it('search_includesSourceTypeWhenProvided', () => {
+    service.search('budget', 7, 0.4, 'nuxeo').subscribe();
+
+    expect(httpSpy.post).toHaveBeenCalledWith(
+      '/api/rag/search/semantic',
+      jasmine.objectContaining({
+        query: 'budget',
+        topK: 7,
+        minScore: 0.4,
+        sourceType: 'nuxeo'
+      })
+    );
+  });
+
+  it('prompt_includesSourceTypeAlongsideNodeScopeFilter', () => {
+    service.prompt('Summarize this file', {
+      nodeId: 'node-123',
+      sourceType: 'alfresco'
+    }).subscribe();
+
+    expect(httpSpy.post).toHaveBeenCalledWith(
+      '/api/rag/prompt',
+      jasmine.objectContaining({
+        question: 'Summarize this file',
+        filter: "cin_id = 'node-123'",
+        sourceType: 'alfresco'
+      })
+    );
   });
 
   it('streamPrompt_emitsTokensInOrder', (done) => {
