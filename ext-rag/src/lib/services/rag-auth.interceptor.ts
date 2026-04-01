@@ -56,7 +56,7 @@ export class RagAuthInterceptor implements HttpInterceptor {
     if (!ticket) return next.handle(req);
 
     return next.handle(req.clone({
-      setHeaders: { Authorization: `Basic ${btoa(ticket)}` }
+      setHeaders: { Authorization: `Basic ${btoa(ticket + ':')}` }
     }));
   }
 

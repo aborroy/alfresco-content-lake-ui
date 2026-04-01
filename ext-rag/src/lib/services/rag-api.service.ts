@@ -221,7 +221,7 @@ export class RagApiService {
 
     const ticket = this.findTicket();
     if (ticket) {
-      headers.Authorization = `Basic ${btoa(ticket)}`;
+      headers.Authorization = `Basic ${btoa(ticket + ':')}`;
     }
     return headers;
   }
