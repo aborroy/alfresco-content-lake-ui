@@ -35,7 +35,6 @@ export class RagAuthInterceptor implements HttpInterceptor {
       // Example: configured = http://localhost:9091/api/rag  -> pathname /api/rag
       // Example: configured = http://localhost:9091          -> pathname /
       if (u.pathname && u.pathname !== '/') matchers.add(u.pathname.replace(/\/+$/, ''));
-      matchers.add(u.origin); // optional: match absolute origin too
       matchers.add(configured.replace(/\/+$/, ''));
     } catch {
       matchers.add(configured.replace(/\/+$/, ''));
