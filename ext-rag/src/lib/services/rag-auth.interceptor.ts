@@ -46,7 +46,7 @@ export class RagAuthInterceptor implements HttpInterceptor {
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const url = req.url;
 
-    const isRagCall = this.ragMatchers.some(m => url.includes(m));
+    const isRagCall = this.ragMatchers.some(m => url.includes(m) || url.includes('/' + m));
     if (!isRagCall) return next.handle(req);
 
     const ticket = this.findTicket();
@@ -60,7 +60,7 @@ export class RagAuthInterceptor implements HttpInterceptor {
   }
 
   private findTicket(): string | null {
-    const candidates = ['ticket-ECM', 'ticket_ECM', 'auth_ticket'];
+    const candidates = ['ticket-ECM', 'ticket_ECM', 'auth_ticket', 'ticket'];
 
     const normalize = (v: string) => v.trim().replace(/^"+|"+$/g, '');
 
