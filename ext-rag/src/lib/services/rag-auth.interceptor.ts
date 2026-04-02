@@ -60,11 +60,24 @@ export class RagAuthInterceptor implements HttpInterceptor {
   }
 
   private findTicket(): string | null {
-    const candidates = ['ticket-ECM', 'ticket_ECM', 'auth_ticket', 'ticket'];
+    const candidates = [
+      'ticket-ECM',
+      'ticket_ECM',
+      'auth_ticket',
+      'ticket',
+      'tkt',
+      'tkt-ECM',
+      'tkt_ECM',
+      'ticket-ecm',
+      'ticket_ecm',
+      'tkt-ecm',
+      'tkt_ecm'
+    ];
 
     const normalize = (v: string) => v.trim().replace(/^"+|"+$/g, '');
 
     const readFrom = (s: Storage) => {
+      // Direct lookup
       for (const k of candidates) {
         const v = s.getItem(k);
         if (v) {
@@ -72,7 +85,7 @@ export class RagAuthInterceptor implements HttpInterceptor {
           if (n.startsWith('TICKET_')) return n;
         }
       }
-      // Scan keys (case changes happen)
+      // Scan all keys
       for (let i = 0; i < s.length; i++) {
         const k = s.key(i);
         if (!k) continue;
@@ -84,8 +97,13 @@ export class RagAuthInterceptor implements HttpInterceptor {
       return null;
     };
 
-    // ADF can be configured to use either localStorage or sessionStorage
-    return readFrom(localStorage) ?? readFrom(sessionStorage) ?? null;
+    const ticket = readFrom(localStorage) ?? readFrom(sessionStorage);
+    if (!ticket) {
+      console.warn('[ext-rag] No ticket found in localStorage or sessionStorage');
+    } else {
+      console.debug('[ext-rag] Using ticket', ticket.substring(0, 12) + '…');
+    }
+    return ticket;
   }
 }
 
