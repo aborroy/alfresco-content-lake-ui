@@ -12,6 +12,7 @@ import {
   RagPromptResponse,
   RagPromptStreamEvent
 } from '../models/rag.models';
+import { findEcmTicket } from '../utils/ecm-ticket.util';
 
 /**
  * Client for the alfresco-content-lake rag-service REST API.
@@ -219,49 +220,11 @@ export class RagApiService {
       'Content-Type': 'application/json'
     };
 
-    const ticket = this.findTicket();
+    const ticket = findEcmTicket();
     if (ticket) {
       headers.Authorization = `Basic ${btoa(ticket + ':')}`;
     }
     return headers;
-  }
-
-  private findTicket(): string | null {
-    if (typeof localStorage === 'undefined' || typeof sessionStorage === 'undefined') {
-      return null;
-    }
-
-    const candidates = ['ticket-ECM', 'ticket_ECM', 'auth_ticket'];
-    const normalize = (value: string) => value.trim().replace(/^"+|"+$/g, '');
-
-    const readFrom = (storage: Storage): string | null => {
-      for (const key of candidates) {
-        const value = storage.getItem(key);
-        if (value) {
-          const normalized = normalize(value);
-          if (normalized.startsWith('TICKET_')) {
-            return normalized;
-          }
-        }
-      }
-      for (let i = 0; i < storage.length; i++) {
-        const key = storage.key(i);
-        if (!key) {
-          continue;
-        }
-        const value = storage.getItem(key);
-        if (!value) {
-          continue;
-        }
-        const normalized = normalize(value);
-        if (normalized.startsWith('TICKET_')) {
-          return normalized;
-        }
-      }
-      return null;
-    };
-
-    return readFrom(localStorage) ?? readFrom(sessionStorage);
   }
 
   private consumeSseBuffer(

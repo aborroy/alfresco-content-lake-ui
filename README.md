@@ -199,7 +199,7 @@ This ensures:
 Browser (ACA/ADW)
   │
   │  POST /api/rag/prompt
-  │  Header: Authorization: Basic <alfresco-ticket>
+  │  Header: Authorization: Basic <base64(TICKET_xxx:)>
   │
   ▼
 nginx / gateway
@@ -216,7 +216,10 @@ rag-service
 Alfresco Repository
 ```
 
-No custom authentication code is needed in the Angular module. ADF installs an HTTP interceptor that adds the ticket to every same-origin request. The gateway makes `rag-service` reachable on the same origin as Alfresco.
+No custom authentication code is needed in the Angular module. The extension reads the ADF ECM
+ticket from browser storage and sends it in the same format ADF uses for repository calls:
+`Authorization: Basic base64(ticket:)`. The gateway makes `rag-service` reachable on the same
+origin as Alfresco.
 
 ## API contract
 

@@ -7,6 +7,7 @@ import {
 } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AppConfigService } from '@alfresco/adf-core';
+import { findEcmTicket } from '../utils/ecm-ticket.util';
 
 /**
  * HTTP interceptor that attaches the Alfresco authentication
@@ -49,7 +50,7 @@ export class RagAuthInterceptor implements HttpInterceptor {
     const isRagCall = this.ragMatchers.some(m => url.includes(m) || url.includes('/' + m));
     if (!isRagCall) return next.handle(req);
 
-    const ticket = this.findTicket();
+    const ticket = findEcmTicket();
 
     if (!ticket) return next.handle(req);
 
@@ -57,12 +58,4 @@ export class RagAuthInterceptor implements HttpInterceptor {
       setHeaders: { Authorization: `Basic ${btoa(ticket + ':')}` }
     }));
   }
-
-  private findTicket(): string | null {
-    const ticket = localStorage.getItem('ticket-ECM');
-    if (!ticket) return null;
-    const n = ticket.trim().replace(/^"+|"+$/g, '');
-    return n.startsWith('TICKET_') ? n : null;
-  }
 }
-

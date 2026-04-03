@@ -46,6 +46,8 @@ describe('RagApiService', () => {
 
   afterEach(() => {
     (globalThis as any).fetch = originalFetch;
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('search_includesSourceTypeWhenProvided', () => {
@@ -147,6 +149,31 @@ describe('RagApiService', () => {
           { type: 'token', token: 'Hi' },
           { type: 'done' }
         ]);
+        done();
+      }
+    });
+  });
+
+  it('streamPrompt_attachesTicketHeaderUsingUiEncoding', (done) => {
+    localStorage.setItem('ticket-ECM', '"TICKET_STREAM"');
+    (globalThis as any).fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve(
+      createMockResponse([
+        'event: done\ndata: {}\n\n'
+      ])
+    ));
+
+    service.streamPrompt('Q').subscribe({
+      next: () => undefined,
+      error: (error) => done.fail(error),
+      complete: () => {
+        expect((globalThis as any).fetch).toHaveBeenCalledWith(
+          '/api/rag/chat/stream',
+          jasmine.objectContaining({
+            headers: jasmine.objectContaining({
+              Authorization: `Basic ${btoa('TICKET_STREAM:')}`
+            })
+          })
+        );
         done();
       }
     });
