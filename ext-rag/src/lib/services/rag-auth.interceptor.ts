@@ -23,39 +23,51 @@ import { findEcmTicket } from '../utils/ecm-ticket.util';
 export class RagAuthInterceptor implements HttpInterceptor {
 
   private readonly ragMatchers: string[];
+  private readonly contentLakeMatchers: string[];
 
   constructor(private appConfig: AppConfigService) {
-    const configured = this.appConfig.get<string>('plugins.ragService.baseUrl', '/api/rag');
+    const configuredRagBaseUrl = this.appConfig.get<string>('plugins.ragService.baseUrl', '/api/rag');
+    const configuredContentLakeBaseUrl = this.appConfig.get<string>('plugins.contentLakeService.baseUrl', '/api/content-lake');
 
-    // Always support proxy paths (RAG service + batch-ingester status API)
-    const matchers = new Set<string>(['/api/rag', '/api/content-lake']);
-
-    // Also support configured value, whether it is absolute or relative
-    try {
-      const u = new URL(configured, window.location.origin);
-      // Example: configured = http://localhost:9091/api/rag  -> pathname /api/rag
-      // Example: configured = http://localhost:9091          -> pathname /
-      if (u.pathname && u.pathname !== '/') matchers.add(u.pathname.replace(/\/+$/, ''));
-      matchers.add(configured.replace(/\/+$/, ''));
-    } catch {
-      matchers.add(configured.replace(/\/+$/, ''));
-    }
-
-    this.ragMatchers = [...matchers];
+    this.ragMatchers = this.buildMatchers('/api/rag', configuredRagBaseUrl);
+    this.contentLakeMatchers = this.buildMatchers('/api/content-lake', configuredContentLakeBaseUrl);
   }
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const url = req.url;
 
-    const isRagCall = this.ragMatchers.some(m => url.includes(m) || url.includes('/' + m));
-    if (!isRagCall) return next.handle(req);
+    const isRagCall = this.matchesAny(url, this.ragMatchers);
+    const isContentLakeCall = this.matchesAny(url, this.contentLakeMatchers);
+    if (!isRagCall && !isContentLakeCall) return next.handle(req);
 
     const ticket = findEcmTicket();
 
     if (!ticket) return next.handle(req);
 
+    const encodedCredentials = isContentLakeCall ? btoa(ticket) : btoa(ticket + ':');
+
     return next.handle(req.clone({
-      setHeaders: { Authorization: `Basic ${btoa(ticket + ':')}` }
+      setHeaders: { Authorization: `Basic ${encodedCredentials}` }
     }));
+  }
+
+  private buildMatchers(defaultBaseUrl: string, configuredBaseUrl: string): string[] {
+    const matchers = new Set<string>([defaultBaseUrl]);
+
+    try {
+      const url = new URL(configuredBaseUrl, window.location.origin);
+      if (url.pathname && url.pathname !== '/') {
+        matchers.add(url.pathname.replace(/\/+$/, ''));
+      }
+      matchers.add(configuredBaseUrl.replace(/\/+$/, ''));
+    } catch {
+      matchers.add(configuredBaseUrl.replace(/\/+$/, ''));
+    }
+
+    return [...matchers];
+  }
+
+  private matchesAny(url: string, matchers: string[]): boolean {
+    return matchers.some((matcher) => url.includes(matcher) || url.includes('/' + matcher));
   }
 }

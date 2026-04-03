@@ -12,7 +12,8 @@ describe('RagAuthInterceptor', () => {
     appConfigMock = jasmine.createSpyObj<AppConfigService>('AppConfigService', ['get']);
     appConfigMock.get.and.callFake((key: string, defaultValue: any) => {
       const config: Record<string, string> = {
-        'plugins.ragService.baseUrl': '/api/rag'
+        'plugins.ragService.baseUrl': '/api/rag',
+        'plugins.contentLakeService.baseUrl': '/api/content-lake'
       };
       return config[key] ?? defaultValue;
     });
@@ -52,7 +53,7 @@ describe('RagAuthInterceptor', () => {
 
     interceptor.intercept(req, handler).subscribe(() => {
       const handledReq = (handler.handle as jasmine.Spy).calls.mostRecent().args[0] as HttpRequest<any>;
-      expect(handledReq.headers.get('Authorization')).toBe(`Basic ${btoa('TICKET_SESSION:')}`);
+      expect(handledReq.headers.get('Authorization')).toBe(`Basic ${btoa('TICKET_SESSION')}`);
       done();
     });
   });
