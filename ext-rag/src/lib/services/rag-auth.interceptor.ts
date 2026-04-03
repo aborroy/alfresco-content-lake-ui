@@ -50,7 +50,6 @@ export class RagAuthInterceptor implements HttpInterceptor {
     if (!isRagCall) return next.handle(req);
 
     const ticket = this.findTicket();
-    console.log('[ext-rag] Intercepting:', url, '| ticket:', ticket ? ticket.substring(0, 20) + '…' : '(none)');
 
     if (!ticket) return next.handle(req);
 
@@ -60,50 +59,10 @@ export class RagAuthInterceptor implements HttpInterceptor {
   }
 
   private findTicket(): string | null {
-    const candidates = [
-      'ticket-ECM',
-      'ticket_ECM',
-      'auth_ticket',
-      'ticket',
-      'tkt',
-      'tkt-ECM',
-      'tkt_ECM',
-      'ticket-ecm',
-      'ticket_ecm',
-      'tkt-ecm',
-      'tkt_ecm'
-    ];
-
-    const normalize = (v: string) => v.trim().replace(/^"+|"+$/g, '');
-
-    const readFrom = (s: Storage) => {
-      // Direct lookup
-      for (const k of candidates) {
-        const v = s.getItem(k);
-        if (v) {
-          const n = normalize(v);
-          if (n.startsWith('TICKET_')) return n;
-        }
-      }
-      // Scan all keys
-      for (let i = 0; i < s.length; i++) {
-        const k = s.key(i);
-        if (!k) continue;
-        const v = s.getItem(k);
-        if (!v) continue;
-        const n = normalize(v);
-        if (n.startsWith('TICKET_')) return n;
-      }
-      return null;
-    };
-
-    const ticket = readFrom(localStorage) ?? readFrom(sessionStorage);
-    if (!ticket) {
-      console.warn('[ext-rag] No ticket found in localStorage or sessionStorage');
-    } else {
-      console.debug('[ext-rag] Using ticket', ticket.substring(0, 12) + '…');
-    }
-    return ticket;
+    const ticket = localStorage.getItem('ticket-ECM');
+    if (!ticket) return null;
+    const n = ticket.trim().replace(/^"+|"+$/g, '');
+    return n.startsWith('TICKET_') ? n : null;
   }
 }
 
