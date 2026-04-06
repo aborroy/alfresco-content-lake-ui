@@ -77,35 +77,35 @@ export class ContentLakeSidebarComponent {
     this.nodesApiService.nodeUpdated
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((node: Node) => {
-        if (this.node?.id === node?.id) {
+        if (this.selectedNode?.id === node?.id) {
           this.nodeEntry = { entry: node } as NodeEntry;
           this.cdr.markForCheck();
         }
       });
   }
 
-  get node(): Node | null {
+  get selectedNode(): Node | null {
     return asNode(this.nodeEntry);
   }
 
   get isFolder(): boolean {
-    return !!this.node?.isFolder;
+    return !!this.selectedNode?.isFolder;
   }
 
   get isFile(): boolean {
-    return !!this.node?.isFile;
+    return !!this.selectedNode?.isFile;
   }
 
   get folderIndexed(): boolean {
-    return hasIndexedAspect(this.node);
+    return hasIndexedAspect(this.selectedNode);
   }
 
   get nodeExcluded(): boolean {
-    return isExcludedFromLake(this.node);
+    return isExcludedFromLake(this.selectedNode);
   }
 
   get contentLakeEnabled(): boolean {
-    return isContentLakeEnabled(this.node);
+    return isContentLakeEnabled(this.selectedNode);
   }
 
   // ── Scope section ──
@@ -118,7 +118,7 @@ export class ContentLakeSidebarComponent {
   }
 
   get scopeDescription(): string {
-    const node = this.node;
+    const node = this.selectedNode;
     if (!node) {
       return '';
     }
@@ -148,23 +148,23 @@ export class ContentLakeSidebarComponent {
   }
 
   get folderToggleEnabled(): boolean {
-    return this.isFolder && canUpdateNode(this.node) && !this.saving;
+    return this.isFolder && canUpdateNode(this.selectedNode) && !this.saving;
   }
 
   get showFolderExcludeToggle(): boolean {
-    return this.isFolder && canManageFolderExclude(this.node);
+    return this.isFolder && canManageFolderExclude(this.selectedNode);
   }
 
   get folderExcludeToggleEnabled(): boolean {
-    return this.showFolderExcludeToggle && canUpdateNode(this.node) && !this.saving;
+    return this.showFolderExcludeToggle && canUpdateNode(this.selectedNode) && !this.saving;
   }
 
   get showDocumentExcludeToggle(): boolean {
-    return this.isFile && canManageExcludeOverride(this.node);
+    return this.isFile && canManageExcludeOverride(this.selectedNode);
   }
 
   get documentExcludeToggleEnabled(): boolean {
-    return this.showDocumentExcludeToggle && canUpdateNode(this.node) && !this.saving;
+    return this.showDocumentExcludeToggle && canUpdateNode(this.selectedNode) && !this.saving;
   }
 
   // ── Ingestion status section ──
@@ -222,13 +222,13 @@ export class ContentLakeSidebarComponent {
   // ── Actions ──
 
   onFolderIndexedChange(event: MatSlideToggleChange): void {
-    if (!this.node) {
+    if (!this.selectedNode) {
       return;
     }
 
     this.saving = true;
     this.scopeService
-      .setFolderIndexed(this.node, event.checked)
+      .setFolderIndexed(this.selectedNode, event.checked)
       .pipe(
         finalize(() => {
           this.saving = false;
@@ -243,13 +243,13 @@ export class ContentLakeSidebarComponent {
   }
 
   onNodeExcludedChange(event: MatSlideToggleChange): void {
-    if (!this.node) {
+    if (!this.selectedNode) {
       return;
     }
 
     this.saving = true;
     this.scopeService
-      .setNodeExcluded(this.node, event.checked)
+      .setNodeExcluded(this.selectedNode, event.checked)
       .pipe(
         finalize(() => {
           this.saving = false;
@@ -268,7 +268,7 @@ export class ContentLakeSidebarComponent {
   }
 
   private refreshStatus(invalidateCache = false): void {
-    const nodeId = this.node?.id;
+    const nodeId = this.selectedNode?.id;
     if (!nodeId) {
       this.nodeStatus = null;
       this.cdr.markForCheck();
@@ -282,7 +282,7 @@ export class ContentLakeSidebarComponent {
     this.statusLoading = true;
     this.cdr.markForCheck();
 
-    const status$ = this.node?.isFolder
+    const status$ = this.selectedNode?.isFolder
       ? this.batchService.getNodeStatusDetailed(nodeId)
       : this.batchService.getNodeStatus(nodeId);
 
@@ -297,7 +297,7 @@ export class ContentLakeSidebarComponent {
       )
       .subscribe((status) => {
         // Only apply if the node hasn't changed while loading
-        if (this.node?.id === nodeId) {
+        if (this.selectedNode?.id === nodeId) {
           this.nodeStatus = status;
           this.cdr.markForCheck();
         }

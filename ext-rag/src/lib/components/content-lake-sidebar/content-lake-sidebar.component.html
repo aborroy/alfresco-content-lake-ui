@@ -1,11 +1,11 @@
 <section class="ext-rag-content-lake" *ngIf="!loading; else loadingState">
-  <ng-container *ngIf="node; else emptyState">
+  <ng-container *ngIf="selectedNode; else emptyState">
     <header class="ext-rag-content-lake__header">
       <div class="ext-rag-content-lake__title-row">
         <mat-icon>{{ isFolder ? 'folder_special' : 'description' }}</mat-icon>
         <div>
           <h3>Content Lake</h3>
-          <p>{{ node?.name }}</p>
+          <p>{{ selectedNode?.name }}</p>
         </div>
       </div>
     </header>
