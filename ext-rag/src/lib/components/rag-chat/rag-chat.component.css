@@ -95,7 +95,7 @@
   flex-wrap: wrap;
   padding: 10px 14px;
   border-bottom: 1px solid #e5ebf3;
-  background: linear-gradient(90deg, #f4f8ff 0%, #fcfdff 100%);
+  background: #f7f9fc;
 }
 
 .rag-chat__scope-indicator {
