@@ -17,7 +17,8 @@
 # ============================================================
 
 # ----- Stage 1: Build -----
-FROM node:20-alpine AS builder
+# ACA 7.4.x moved to a Node 24 toolchain; older builders can fail during npm ci.
+FROM node:24-alpine AS builder
 
 ARG ACA_TAG=develop
 
