@@ -92,6 +92,14 @@ export class RagChatSessionService {
     this.persist();
   }
 
+  deleteSession(sessionId: string): void {
+    this.state.sessions = this.state.sessions.filter((s) => s.sessionId !== sessionId);
+    if (this.state.activeSessionId === sessionId) {
+      this.state.activeSessionId = this.state.sessions[0]?.sessionId ?? null;
+    }
+    this.persist();
+  }
+
   getActiveSessionId(): string | null {
     return this.state.activeSessionId;
   }

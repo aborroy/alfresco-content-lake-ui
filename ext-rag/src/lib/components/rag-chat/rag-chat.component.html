@@ -9,17 +9,27 @@
     </div>
 
     <div class="rag-chat__session-list">
-      <button *ngFor="let session of sessionSummaries; trackBy: trackSession"
-              type="button"
-              class="rag-chat__session"
-              [class.rag-chat__session--active]="session.sessionId === activeSessionId"
-              [disabled]="thinking"
-              (click)="openConversation(session.sessionId)">
-        <span class="rag-chat__session-title">{{ session.title }}</span>
-        <span class="rag-chat__session-meta">
-          {{ session.updatedAt | date:'short' }} · {{ session.messageCount }} msg
-        </span>
-      </button>
+      <div *ngFor="let session of sessionSummaries; trackBy: trackSession"
+           class="rag-chat__session-row">
+        <button type="button"
+                class="rag-chat__session"
+                [class.rag-chat__session--active]="session.sessionId === activeSessionId"
+                [disabled]="thinking"
+                (click)="openConversation(session.sessionId)">
+          <span class="rag-chat__session-title">{{ session.title }}</span>
+          <span class="rag-chat__session-meta">
+            {{ session.updatedAt | date:'short' }} · {{ session.messageCount }} msg
+          </span>
+        </button>
+        <button mat-icon-button
+                type="button"
+                class="rag-chat__session-delete"
+                [disabled]="thinking"
+                (click)="deleteConversation(session.sessionId, $event)"
+                matTooltip="Delete conversation">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </div>
     </div>
   </aside>
 

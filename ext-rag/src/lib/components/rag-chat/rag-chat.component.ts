@@ -10,6 +10,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { DiscoveryApiService } from '@alfresco/adf-content-services';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,6 +21,7 @@ import { take } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
 import { RagChatSessionService, RagChatSessionSummary } from '../../services/rag-chat-session.service';
+import { RagDeleteSessionDialogComponent } from './rag-delete-session-dialog.component';
 import { ChatMessage, ContentSourceType, MergedDocument, PromptSource, RagPromptOptions, RagPromptResponse } from '../../models/rag.models';
 
 let _nextId = 0;
@@ -31,6 +33,7 @@ let _nextId = 0;
     CommonModule,
     FormsModule,
     RouterModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -70,7 +73,8 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   constructor(
     private ragApi: RagApiService,
     private discoveryApi: DiscoveryApiService,
-    private chatSessions: RagChatSessionService
+    private chatSessions: RagChatSessionService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -155,6 +159,29 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     this.autoScrollEnabled = true;
     this.refreshSessionSummaries();
     this.shouldScroll = true;
+  }
+
+  deleteConversation(sessionId: string, event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.thinking) {
+      return;
+    }
+    this.dialog.open(RagDeleteSessionDialogComponent)
+      .afterClosed()
+      .pipe(take(1))
+      .subscribe((confirmed) => {
+        if (!confirmed) {
+          return;
+        }
+        this.chatSessions.deleteSession(sessionId);
+        if (this.activeSessionId === sessionId) {
+          const next = this.chatSessions.ensureActiveSession();
+          this.activeSessionId = next;
+          this.messages = this.chatSessions.getMessages(next);
+          this.shouldScroll = true;
+        }
+        this.refreshSessionSummaries();
+      });
   }
 
   onMessagesScroll(): void {
