@@ -7,8 +7,19 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docs.docker.com/compose/)
 [![Status](https://img.shields.io/badge/Status-PoC-yellow.svg)]()
 
+UI extension for [content-lake-app](https://github.com/aborroy/content-lake-app) that adds **semantic search** and **RAG question-answering** to Alfresco Content Application (ACA) and Alfresco Digital Workspace (ADW).
 
-UI extension for [alfresco-content-lake](https://github.com/aborroy/alfresco-content-lake) that adds **semantic search** and **RAG question-answering** to Alfresco Content Application (ACA) and Alfresco Digital Workspace (ADW).
+## Content Lake Ecosystem
+
+Part of the **Content Lake** ecosystem -- a PoC for ingesting Alfresco and Nuxeo content into [hxpr](https://github.com/HylandSoftware/hxpr) for hybrid semantic search and RAG.
+
+| Repo | Role |
+|---|---|
+| [content-lake-app](https://github.com/aborroy/content-lake-app) | Java ingestion pipeline and RAG service |
+| [content-lake-app-deployment](https://github.com/aborroy/content-lake-app-deployment) | Docker Compose stack that wires everything together |
+| **[alfresco-content-lake-ui](https://github.com/aborroy/alfresco-content-lake-ui)** | ACA/ADW extension: semantic search + RAG chat sidebar (this repo) |
+| [content-lake-app-ui](https://github.com/aborroy/content-lake-app-ui) | Standalone demo UI (Alfresco + Nuxeo dual auth) |
+| [nuxeo-deployment](https://github.com/aborroy/nuxeo-deployment) | Local Nuxeo + PostgreSQL stack (required for Nuxeo profiles) |
 
 ## Features
 
@@ -27,7 +38,7 @@ UI extension for [alfresco-content-lake](https://github.com/aborroy/alfresco-con
 
 ## Prerequisites
 
-* A running [alfresco-content-lake](https://github.com/aborroy/alfresco-content-lake) deployment with `rag-service` available
+* A running [content-lake-app](https://github.com/aborroy/content-lake-app) deployment with `rag-service` available
 * The `content-lake-repo-model` module deployed in Alfresco Repository so `cl:indexed` and `cl:excludeFromLake` exist
 * ACA (Alfresco Content App) source checkout, or ADW (Alfresco Digital Workspace) source
 * Node.js 18+
@@ -143,7 +154,7 @@ Notes:
 
 ## Content Lake scope controls
 
-The extension also exposes the repository scope model introduced by `alfresco-content-lake`:
+The extension also exposes the repository scope model introduced by `content-lake-app`:
 
 * Right-click a folder and use *Enable Content Lake for this folder* or *Disable Content Lake for this folder* to add or remove `cl:indexed`
 * Open the *Content Lake* tab in the ACA info drawer to manage the same folder toggle without leaving the current view
@@ -223,7 +234,7 @@ origin as Alfresco.
 
 ## API contract
 
-The extension expects the following endpoints from [alfresco-content-lake](https://github.com/aborroy/alfresco-content-lake) `rag-service`:
+The extension expects the following endpoints from [content-lake-app](https://github.com/aborroy/content-lake-app) `rag-service`:
 
 ### `POST /api/rag/search/semantic`
 
@@ -340,3 +351,24 @@ Expected SSE events:
 - `event: metadata` with final response payload (`RagPromptResponse`)
 - `event: done` to close the stream
 - `event: error` for terminal stream errors
+
+## Development
+
+`ext-rag/` is a source bundle, not a standalone Angular workspace. To build or test it, sync it
+into an ACA checkout first:
+
+```bash
+# From your alfresco-content-app clone:
+cp -r /path/to/alfresco-content-lake-ui/ext-rag projects/ext-rag
+```
+
+Then run Angular commands from the ACA workspace:
+
+```bash
+npm start                        # serve ACA with ext-rag loaded
+ng build ext-rag                 # build the extension library
+ng test ext-rag                  # run extension unit tests
+```
+
+Do not run Angular builds or tests from `alfresco-content-lake-ui/` directly -- the workspace
+scaffolding lives in the ACA clone.
