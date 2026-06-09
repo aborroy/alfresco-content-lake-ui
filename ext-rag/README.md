@@ -1,4 +1,4 @@
-# ext-rag — ADF Extension for RAG
+# ext-rag -- ADF Extension for RAG
 
 ADF extension module that adds **semantic search** and **RAG question-answering** to Alfresco Content Application (ACA) and Alfresco Digital Workspace (ADW).
 
@@ -38,18 +38,26 @@ ext-rag/
     │   └── ext-rag.plugin.json       # Extension descriptor (routes, menus, sidebar)
     ├── lib/
     │   ├── components/
-    │   │   ├── rag-chat/             # Chat-style Q&A component
-    │   │   ├── rag-page/             # Full-page wrapper (tabs: Ask + Search)
-    │   │   ├── rag-search/           # Semantic search component
-    │   │   └── rag-sidebar/          # Sidebar wrapper (compact chat)
+    │   │   ├── rag-chat/                  # Chat-style Q&A component
+    │   │   ├── rag-page/                  # Full-page wrapper (tabs: Ask + Search)
+    │   │   ├── rag-search/                # Semantic search component
+    │   │   ├── rag-sidebar/               # Sidebar wrapper (compact chat)
+    │   │   ├── content-lake-sidebar/      # Content Lake scope sidebar
+    │   │   └── content-lake-status-badge/ # Per-node ingestion status badge
     │   ├── models/
-    │   │   └── rag.models.ts         # TypeScript interfaces (API + view models)
+    │   │   └── rag.models.ts              # TypeScript interfaces (API + view models)
     │   ├── services/
-    │   │   ├── rag-api.service.ts    # HTTP client for rag-service
-    │   │   └── rag-auth.interceptor.ts
+    │   │   ├── rag-api.service.ts         # HTTP client for rag-service
+    │   │   ├── rag-auth.interceptor.ts
+    │   │   ├── rag-chat-session.service.ts        # Chat session state
+    │   │   ├── content-lake-scope.service.ts      # Active Content Lake scope
+    │   │   └── content-lake-status-batch.service.ts # Batched node status lookups
+    │   ├── utils/
+    │   │   ├── content-lake-scope.utils.ts
+    │   │   └── ecm-ticket.util.ts
     │   └── store/
-    │       ├── rag.actions.ts        # NgRx action types
-    │       └── rag.effects.ts        # NgRx effects (navigation)
+    │       ├── rag.actions.ts             # NgRx action types
+    │       └── rag.effects.ts             # NgRx effects (navigation)
     ├── ext-rag.module.ts             # Root NgModule + provider function
     └── public-api.ts                # Barrel exports
 ```

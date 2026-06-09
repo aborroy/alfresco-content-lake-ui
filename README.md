@@ -168,7 +168,7 @@ These controls call the standard Alfresco Repository nodes API directly. No extr
 The mechanism is identical, only the paths change since ADW uses Nx:
 
 1. Place the extension under `libs/ext-rag/` (or generate a new Nx lib and copy the source)
-2. Update `tsconfig.base.json` to map `@myorg/ext-rag` > `libs/ext-rag/src/index.ts`
+2. Update `tsconfig.base.json` to map `@myorg/ext-rag` > `libs/ext-rag/src/public-api.ts`
 3. Import `ExtRagModule` in `apps/content-ee/src/app/extension.module.ts`
 4. Add the plugin JSON asset in `angular.json` under `content-ee` build assets
 5. Configure proxy / gateway the same way
@@ -265,7 +265,7 @@ Semantic search across indexed content-lake chunks.
     {
       "rank": 1,
       "score": 0.5760,
-      "chunkText": "found herself falling down a very deep well…",
+      "chunkText": "found herself falling down a very deep well...",
       "sourceDocument": {
         "documentId": "c225f4d5-882b-4b99-81d1-3226af2560a4",
         "nodeId": "4d2a93aa-6a11-431f-9202-58f16062ef5b",
@@ -312,7 +312,7 @@ expression (`cin_id = '<nodeId>'`).
 
 ```json
 {
-  "answer": "She fell because the rabbit-hole dipped suddenly downward…",
+  "answer": "She fell because the rabbit-hole dipped suddenly downward...",
   "question": "Why the girl fell in the hole?",
   "sessionId": "demo-session-1",
   "retrievalQuery": "why the girl fell in the hole",
@@ -331,7 +331,7 @@ expression (`cin_id = '<nodeId>'`).
       "sourceType": "nuxeo",
       "name": "down-the-rabbit-hole.pdf",
       "path": "/default-domain/workspaces/literature",
-      "chunkText": "found herself falling down a very deep well…",
+      "chunkText": "found herself falling down a very deep well...",
       "score": 0.6628,
       "openInSourceUrl": "http://localhost:8081/nuxeo/ui/#!/browse/default-domain/workspaces/literature/down-the-rabbit-hole.pdf"
     }
