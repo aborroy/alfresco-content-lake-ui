@@ -24,13 +24,18 @@ export class RagAuthInterceptor implements HttpInterceptor {
 
   private readonly ragMatchers: string[];
   private readonly contentLakeMatchers: string[];
+  private readonly statusMatchers: string[];
 
   constructor(private appConfig: AppConfigService) {
     const configuredRagBaseUrl = this.appConfig.get<string>('plugins.ragService.baseUrl', '/api/rag');
     const configuredContentLakeBaseUrl = this.appConfig.get<string>('plugins.contentLakeService.baseUrl', '/api/content-lake');
+    const configuredStatusUrl = this.appConfig.get<string>('plugins.ragService.statusUrl', '/api/status');
 
     this.ragMatchers = this.buildMatchers('/api/rag', configuredRagBaseUrl);
     this.contentLakeMatchers = this.buildMatchers('/api/content-lake', configuredContentLakeBaseUrl);
+    // /api/status is served by rag-service but lives outside /api/rag, so it needs
+    // its own matcher; without the ticket it 401s and the browser shows a Basic-auth prompt.
+    this.statusMatchers = this.buildMatchers('/api/status', configuredStatusUrl);
   }
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
@@ -38,12 +43,15 @@ export class RagAuthInterceptor implements HttpInterceptor {
 
     const isRagCall = this.matchesAny(url, this.ragMatchers);
     const isContentLakeCall = this.matchesAny(url, this.contentLakeMatchers);
-    if (!isRagCall && !isContentLakeCall) return next.handle(req);
+    const isStatusCall = this.matchesAny(url, this.statusMatchers);
+    if (!isRagCall && !isContentLakeCall && !isStatusCall) return next.handle(req);
 
     const ticket = findEcmTicket();
 
     if (!ticket) return next.handle(req);
 
+    // rag-service (including /api/status) uses the Alfresco UI ticket as `ticket:`;
+    // the content-lake batch-ingester expects the bare ticket.
     const encodedCredentials = isContentLakeCall ? btoa(ticket) : btoa(ticket + ':');
 
     return next.handle(req.clone({

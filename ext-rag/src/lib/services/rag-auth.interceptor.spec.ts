@@ -45,6 +45,19 @@ describe('RagAuthInterceptor', () => {
     });
   });
 
+  it('attachesBasicTicketHeaderForStatusRequests', (done) => {
+    localStorage.setItem('ticket-ECM', '"TICKET_ALFRESCO"');
+
+    const req = new HttpRequest('GET', '/api/status');
+    const handler = createHandlerWithSpy();
+
+    interceptor.intercept(req, handler).subscribe(() => {
+      const handledReq = (handler.handle as jasmine.Spy).calls.mostRecent().args[0] as HttpRequest<any>;
+      expect(handledReq.headers.get('Authorization')).toBe(`Basic ${btoa('TICKET_ALFRESCO:')}`);
+      done();
+    });
+  });
+
   it('readsTicketFromSessionStorageForContentLakeRequests', (done) => {
     sessionStorage.setItem('ticket_ECM', 'TICKET_SESSION');
 
