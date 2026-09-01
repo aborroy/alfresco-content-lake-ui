@@ -2,6 +2,68 @@
   padding: 16px;
 }
 
+/* Facets (#5) */
+.rag-search__facets {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rag-search__active-facets,
+.rag-search__facet-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rag-search__facets-title,
+.rag-search__facet-group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #526179;
+  margin-right: 4px;
+}
+
+.rag-search__facet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  background: #fff;
+  color: #2f3f57;
+  font-size: 12px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.rag-search__facet-chip--active {
+  border-color: #2b6ecf;
+  background: #eaf1fb;
+  color: #1f3d66;
+}
+
+.rag-search__facet-chip mat-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.rag-search__facet-count {
+  color: #8494ab;
+  font-size: 11px;
+}
+
+.rag-search__facet-clear {
+  border: 0;
+  background: none;
+  color: #2b6ecf;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .rag-search__input-row {
   display: flex;
   gap: 12px;

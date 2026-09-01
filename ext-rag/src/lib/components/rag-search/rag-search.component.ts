@@ -9,10 +9,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { take } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
+import { catchError, take } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
-import { ContentSourceType, SearchResultItem, MergedDocument } from '../../models/rag.models';
+import { ContentSourceType, SearchResultItem, MergedDocument, FacetBucket, FacetsResponse } from '../../models/rag.models';
+
+interface FacetGroup {
+  property: string;
+  label: string;
+  buckets: FacetBucket[];
+}
 
 @Component({
   selector: 'ext-rag-search',
@@ -44,6 +51,10 @@ export class RagSearchComponent implements OnInit {
   currentRepositoryId: string | null = null;
   repositoryResolved = false;
 
+  // #5 faceted search
+  facetGroups: FacetGroup[] = [];
+  activeFacets: { property: string; value: string }[] = [];
+
   constructor(
     private ragApi: RagApiService,
     private discoveryApi: DiscoveryApiService
@@ -71,18 +82,102 @@ export class RagSearchComponent implements OnInit {
 
     this.loading = true;
     this.error = null;
+    const filter = this.buildFacetFilter();
 
-    this.ragApi.search(q, this.topK, this.minScore, this.selectedSourceType || undefined).subscribe({
+    this.ragApi.search(q, this.topK, this.minScore, this.selectedSourceType || undefined, filter).subscribe({
       next: (res) => {
         this.searchTimeMs = res.searchTimeMs;
         this.documents = this.mergeResults(res.results);
         this.loading = false;
+        this.loadFacets(filter);
       },
       error: (err) => {
         this.error = err?.error?.message || err?.message || 'Search request failed';
         this.loading = false;
       }
     });
+  }
+
+  /* -------- #5 faceted search -------- */
+
+  toggleFacet(property: string, value: string): void {
+    const idx = this.activeFacets.findIndex((f) => f.property === property && f.value === value);
+    if (idx >= 0) {
+      this.activeFacets.splice(idx, 1);
+    } else {
+      this.activeFacets.push({ property, value });
+    }
+    if (this.query.trim()) {
+      this.runSearch();
+    }
+  }
+
+  isFacetActive(property: string, value: string): boolean {
+    return this.activeFacets.some((f) => f.property === property && f.value === value);
+  }
+
+  clearFacets(): void {
+    if (this.activeFacets.length === 0) {
+      return;
+    }
+    this.activeFacets = [];
+    if (this.query.trim()) {
+      this.runSearch();
+    }
+  }
+
+  facetLabel(property: string): string {
+    if (property === 'cin_sourceId') {
+      return 'Source';
+    }
+    const segment = property.split('.').pop() ?? property;
+    const spaced = segment.replace(/([A-Z])/g, ' $1').trim();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  }
+
+  private loadFacets(filter?: string): void {
+    const properties = this.ragApi.facetProperties;
+    if (!properties.length) {
+      this.facetGroups = [];
+      return;
+    }
+    const sourceType = this.selectedSourceType || undefined;
+
+    forkJoin(
+      properties.map((property) =>
+        this.ragApi.facets({
+          property,
+          topN: 10,
+          ...(filter ? { filter } : {}),
+          ...(sourceType ? { sourceType } : {})
+        }).pipe(catchError(() => of({ property, buckets: [] } as FacetsResponse)))
+      )
+    ).subscribe((responses) => {
+      this.facetGroups = responses
+        .filter((r) => Array.isArray(r.buckets) && r.buckets.length > 0)
+        .map((r) => ({ property: r.property, label: this.facetLabel(r.property), buckets: r.buckets }));
+    });
+  }
+
+  private buildFacetFilter(): string | undefined {
+    if (this.activeFacets.length === 0) {
+      return undefined;
+    }
+    const byProperty = new Map<string, string[]>();
+    for (const facet of this.activeFacets) {
+      const clauses = byProperty.get(facet.property) ?? [];
+      clauses.push(`${facet.property} = '${this.escapeHxql(facet.value)}'`);
+      byProperty.set(facet.property, clauses);
+    }
+    const combined: string[] = [];
+    for (const clauses of byProperty.values()) {
+      combined.push(clauses.length > 1 ? `(${clauses.join(' OR ')})` : clauses[0]);
+    }
+    return combined.join(' AND ');
+  }
+
+  private escapeHxql(value: string): string {
+    return value.replace(/'/g, "''");
   }
 
   private mergeResults(results: SearchResultItem[]): MergedDocument[] {

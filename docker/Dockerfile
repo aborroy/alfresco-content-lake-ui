@@ -81,7 +81,9 @@ RUN node -e " \
     baseUrl: '/api/rag', \
     searchPath: '/search/semantic', \
     promptPath: '/prompt', \
-    streamPath: '/chat/stream' \
+    streamPath: '/chat/stream', \
+    facetsPath: '/search/facets', \
+    statusUrl: '/api/status' \
   }; \
   cfg.plugins.contentLakeService = { \
     baseUrl: '/api/content-lake' \

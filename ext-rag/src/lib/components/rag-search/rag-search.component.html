@@ -45,6 +45,32 @@
     {{ error }}
   </div>
 
+  <!-- Facets (#5) -->
+  <div *ngIf="facetGroups.length > 0" class="rag-search__facets">
+    <div *ngIf="activeFacets.length > 0" class="rag-search__active-facets">
+      <span class="rag-search__facets-title">Filters</span>
+      <button *ngFor="let f of activeFacets"
+              type="button"
+              class="rag-search__facet-chip rag-search__facet-chip--active"
+              (click)="toggleFacet(f.property, f.value)">
+        {{ facetLabel(f.property) }}: {{ f.value }}
+        <mat-icon>close</mat-icon>
+      </button>
+      <button type="button" class="rag-search__facet-clear" (click)="clearFacets()">Clear all</button>
+    </div>
+
+    <div *ngFor="let group of facetGroups" class="rag-search__facet-group">
+      <span class="rag-search__facet-group-label">{{ group.label }}</span>
+      <button *ngFor="let bucket of group.buckets"
+              type="button"
+              class="rag-search__facet-chip"
+              [class.rag-search__facet-chip--active]="isFacetActive(group.property, bucket.value)"
+              (click)="toggleFacet(group.property, bucket.value)">
+        {{ bucket.value }} <span class="rag-search__facet-count">{{ bucket.count }}</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Results -->
   <div *ngIf="documents.length > 0" class="rag-search__results">
 

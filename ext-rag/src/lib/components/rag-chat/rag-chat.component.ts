@@ -62,6 +62,10 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   sessionSummaries: RagChatSessionSummary[] = [];
   currentQuestion = '';
   selectedSourceType: ContentSourceType | '' = '';
+  /** #8: ask the server to infer metadata filters from the question. */
+  inferFilters = false;
+  /** #11: request a typed structured answer alongside the free text. */
+  structuredMode = false;
   thinking = false;
   currentRepositoryId: string | null = null;
   repositoryResolved = false;
@@ -382,6 +386,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     this.lastTokenPersistMs = 0;
     this.requestSubscription = this.ragApi.streamPrompt(question, {
       ...scopeOptions,
+      ...this.promptFeatureOptions(),
       sessionId,
       resetSession: isFirstTurn
     }).subscribe({
@@ -433,6 +438,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     this.inflightMessage = assistantMsg;
     this.requestSubscription = this.ragApi.prompt(question, {
       ...scopeOptions,
+      ...this.promptFeatureOptions(),
       sessionId,
       resetSession: isFirstTurn
     }).subscribe({
@@ -473,7 +479,18 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     assistantMsg.searchTimeMs = response.searchTimeMs;
     assistantMsg.generationTimeMs = response.generationTimeMs;
     assistantMsg.sources = this.mergeSources(response.sources ?? []);
+    assistantMsg.verified = response.verified;
+    assistantMsg.unsupportedClaims = response.unsupportedClaims;
+    assistantMsg.structured = response.structured;
     assistantMsg.error = undefined;
+  }
+
+  /** Per-request feature flags (#8 inferred filters, #11 structured output). */
+  private promptFeatureOptions(): Pick<RagPromptOptions, 'inferFilters' | 'responseFormat'> {
+    return {
+      ...(this.inferFilters ? { inferFilters: true } : {}),
+      ...(this.structuredMode ? { responseFormat: 'STRUCTURED' as const } : {})
+    };
   }
 
   private finishAssistantMessage(assistantMsg: ChatMessage): void {

@@ -146,6 +146,110 @@
   width: 148px;
 }
 
+/* Feature toggles (#8 auto filters, #11 structured) */
+.rag-chat__feature-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #526179;
+  border: 1px solid #d9e2ef;
+  border-radius: 14px;
+  padding: 3px 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rag-chat__feature-toggle--on {
+  border-color: #2b6ecf;
+  color: #1f3d66;
+  background: #eaf1fb;
+}
+
+/* Structured answer (#11) */
+.rag-chat__structured {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.rag-chat__structured-summary {
+  font-weight: 600;
+  color: #2f3f57;
+}
+
+.rag-chat__keypoints {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: #3a4a63;
+  font-size: 13px;
+}
+
+.rag-chat__citations {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rag-chat__citation {
+  font-size: 12px;
+  color: #526179;
+}
+
+.rag-chat__citation-source {
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.rag-chat__citation-quote {
+  font-style: italic;
+}
+
+/* Citation faithfulness (#7) */
+.rag-chat__faithfulness {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.rag-chat__faithfulness mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.rag-chat__faithfulness--ok {
+  color: #1b7e3c;
+  background: #e6f4ea;
+}
+
+.rag-chat__faithfulness--warn {
+  color: #9a5b00;
+  background: #fdf0dc;
+}
+
+.rag-chat__unsupported {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #9a5b00;
+}
+
+.rag-chat__unsupported-title {
+  font-weight: 600;
+}
+
+.rag-chat__unsupported ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
 .rag-chat__messages {
   flex: 1;
   min-height: 0;

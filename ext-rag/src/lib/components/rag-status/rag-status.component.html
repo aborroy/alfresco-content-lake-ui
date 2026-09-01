@@ -1,0 +1,66 @@
+<div class="rag-status">
+
+  <div class="rag-status__header">
+    <h2>Content Lake status</h2>
+    <button mat-stroked-button type="button" (click)="refresh()" [disabled]="loading">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="rag-status__loading">
+    <mat-spinner diameter="24"></mat-spinner>
+    Loading status...
+  </div>
+
+  <div *ngIf="error && !loading" class="rag-status__error">
+    <mat-icon>error_outline</mat-icon>
+    {{ error }}
+  </div>
+
+  <ng-container *ngIf="status && !loading">
+    <div class="rag-status__tiles">
+      <div class="rag-status__tile">
+        <span class="rag-status__tile-label">hxpr</span>
+        <span class="rag-status__badge"
+              [class.rag-status__badge--up]="isUp(status.hxprStatus)"
+              [class.rag-status__badge--down]="!isUp(status.hxprStatus)">
+          <mat-icon>{{ isUp(status.hxprStatus) ? 'check_circle' : 'error' }}</mat-icon>
+          {{ status.hxprStatus }}
+        </span>
+      </div>
+
+      <div class="rag-status__tile">
+        <span class="rag-status__tile-label">Indexed documents</span>
+        <span class="rag-status__tile-value">{{ status.totalDocuments }}</span>
+      </div>
+
+      <div class="rag-status__tile">
+        <span class="rag-status__tile-label">Embedding model</span>
+        <span class="rag-status__badge"
+              [class.rag-status__badge--up]="isUp(status.embeddingModel.status)"
+              [class.rag-status__badge--down]="!isUp(status.embeddingModel.status)">
+          <mat-icon>{{ isUp(status.embeddingModel.status) ? 'check_circle' : 'error' }}</mat-icon>
+          {{ status.embeddingModel.status }}
+        </span>
+        <span class="rag-status__tile-sub" *ngIf="status.embeddingModel.url">{{ status.embeddingModel.url }}</span>
+      </div>
+    </div>
+
+    <div *ngIf="sourceEntries.length > 0" class="rag-status__sources">
+      <h3>Documents per source</h3>
+      <table class="rag-status__table">
+        <thead>
+          <tr><th>Source</th><th>Documents</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let entry of sourceEntries">
+            <td>{{ entry.key }}</td>
+            <td>{{ entry.count }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+
+</div>

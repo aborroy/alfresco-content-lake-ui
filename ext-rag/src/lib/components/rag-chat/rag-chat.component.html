@@ -51,6 +51,18 @@
             <option value="nuxeo">Nuxeo</option>
           </select>
         </mat-form-field>
+        <label class="rag-chat__feature-toggle"
+               [class.rag-chat__feature-toggle--on]="inferFilters"
+               matTooltip="Let the assistant infer filters (date, type, path) from your question">
+          <input type="checkbox" [(ngModel)]="inferFilters" [disabled]="thinking" />
+          Auto filters
+        </label>
+        <label class="rag-chat__feature-toggle"
+               [class.rag-chat__feature-toggle--on]="structuredMode"
+               matTooltip="Return a structured answer: summary, key points, citations">
+          <input type="checkbox" [(ngModel)]="structuredMode" [disabled]="thinking" />
+          Structured
+        </label>
         <button *ngIf="compact"
                 mat-stroked-button
                 type="button"
@@ -124,6 +136,36 @@
                 (retrieval {{ msg.searchTimeMs }}ms +
                  generation {{ msg.generationTimeMs }}ms)
               </span>
+            </div>
+
+            <!-- Structured answer (#11) -->
+            <div *ngIf="!msg.loading && msg.structured" class="rag-chat__structured">
+              <div class="rag-chat__structured-summary">{{ msg.structured.summary }}</div>
+              <ul *ngIf="msg.structured.keyPoints?.length" class="rag-chat__keypoints">
+                <li *ngFor="let kp of msg.structured.keyPoints">{{ kp }}</li>
+              </ul>
+              <div *ngIf="msg.structured.citations?.length" class="rag-chat__citations">
+                <div *ngFor="let cit of msg.structured.citations" class="rag-chat__citation">
+                  <span class="rag-chat__citation-source">{{ cit.sourceName }}</span>
+                  <span class="rag-chat__citation-quote">{{ cit.quote }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Citation faithfulness (#7) -->
+            <div *ngIf="!msg.loading && msg.verified !== undefined"
+                 class="rag-chat__faithfulness"
+                 [class.rag-chat__faithfulness--ok]="msg.verified"
+                 [class.rag-chat__faithfulness--warn]="!msg.verified">
+              <mat-icon>{{ msg.verified ? 'verified' : 'report_problem' }}</mat-icon>
+              {{ msg.verified ? 'Grounded in the cited sources' : 'Some claims are not supported by the sources' }}
+            </div>
+            <div *ngIf="!msg.loading && msg.unsupportedClaims && msg.unsupportedClaims.length"
+                 class="rag-chat__unsupported">
+              <div class="rag-chat__unsupported-title">Unsupported claims</div>
+              <ul>
+                <li *ngFor="let claim of msg.unsupportedClaims">{{ claim }}</li>
+              </ul>
             </div>
 
             <!-- Sources -->

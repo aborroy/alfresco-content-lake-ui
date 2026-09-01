@@ -13,8 +13,9 @@ describe('RagApiService', () => {
 
   beforeEach(() => {
     originalFetch = (globalThis as any).fetch;
-    httpSpy = jasmine.createSpyObj<HttpClient>('HttpClient', ['post']);
+    httpSpy = jasmine.createSpyObj<HttpClient>('HttpClient', ['post', 'get']);
     httpSpy.post.and.returnValue(of({}));
+    httpSpy.get.and.returnValue(of({}));
 
     const appConfigSpy = jasmine.createSpyObj<AppConfigService>('AppConfigService', ['get']);
     appConfigSpy.get.and.callFake((key: string, defaultValue: any) => {
@@ -61,6 +62,38 @@ describe('RagApiService', () => {
         minScore: 0.4,
         sourceType: 'nuxeo'
       })
+    );
+  });
+
+  it('search_includesFilterWhenProvided', () => {
+    service.search('budget', 5, 0.5, undefined, "cin_sourceId = 'alfresco:acs'").subscribe();
+
+    expect(httpSpy.post).toHaveBeenCalledWith(
+      '/api/rag/search/semantic',
+      jasmine.objectContaining({ query: 'budget', filter: "cin_sourceId = 'alfresco:acs'" })
+    );
+  });
+
+  it('facets_postsToFacetsEndpoint', () => {
+    service.facets({ property: 'cin_ingestProperties.mimeType', topN: 10 }).subscribe();
+
+    expect(httpSpy.post).toHaveBeenCalledWith(
+      '/api/rag/search/facets',
+      jasmine.objectContaining({ property: 'cin_ingestProperties.mimeType', topN: 10 })
+    );
+  });
+
+  it('getStatus_getsStatusUrl', () => {
+    service.getStatus().subscribe();
+    expect(httpSpy.get).toHaveBeenCalledWith('/api/status');
+  });
+
+  it('prompt_passesInferFiltersAndResponseFormat', () => {
+    service.prompt('q', { inferFilters: true, responseFormat: 'STRUCTURED' }).subscribe();
+
+    expect(httpSpy.post).toHaveBeenCalledWith(
+      '/api/rag/prompt',
+      jasmine.objectContaining({ inferFilters: true, responseFormat: 'STRUCTURED' })
     );
   });
 
@@ -112,6 +145,29 @@ describe('RagApiService', () => {
         );
         done();
       }
+    });
+  });
+
+  it('streamPrompt_carriesFaithfulnessAndStructuredFromMetadata', (done) => {
+    (globalThis as any).fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve(
+      createMockResponse([
+        'event: metadata\ndata: {"answer":"A","question":"Q","model":"m","searchTimeMs":1,"generationTimeMs":2,"totalTimeMs":3,"sourcesUsed":0,"sources":[],"verified":false,"unsupportedClaims":["c1"],"structured":{"summary":"s","keyPoints":["k"],"citations":[{"sourceName":"doc","quote":"q"}]}}\n\n',
+        'event: done\ndata: {}\n\n'
+      ])
+    ));
+
+    service.streamPrompt('Q').subscribe({
+      next: (event) => {
+        if (event.type === 'metadata') {
+          expect(event.response.verified).toBeFalse();
+          expect(event.response.unsupportedClaims).toEqual(['c1']);
+          expect(event.response.structured?.summary).toBe('s');
+          expect(event.response.structured?.keyPoints).toEqual(['k']);
+          expect(event.response.structured?.citations?.[0].sourceName).toBe('doc');
+        }
+      },
+      error: (error) => done.fail(error),
+      complete: () => done()
     });
   });
 

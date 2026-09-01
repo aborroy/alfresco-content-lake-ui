@@ -18,6 +18,13 @@
       "component": "ext-rag.page",
       "auth": ["content-services.auth"],
       "data": { "title": "RAG Assistant" }
+    },
+    {
+      "id": "ext-rag.status.page",
+      "path": "rag-status",
+      "component": "ext-rag.status",
+      "auth": ["content-services.auth"],
+      "data": { "title": "Content Lake Status" }
     }
   ],
 
@@ -33,6 +40,14 @@
             "description": "AI-powered semantic search and Q&A",
             "route": "rag",
             "order": 500
+          },
+          {
+            "id": "ext-rag.nav.status",
+            "icon": "monitor_heart",
+            "title": "Content Lake Status",
+            "description": "Ingestion and service status",
+            "route": "rag-status",
+            "order": 510
           }
         ]
       }

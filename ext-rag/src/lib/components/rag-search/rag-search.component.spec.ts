@@ -46,8 +46,10 @@ describe('RagSearchComponent', () => {
   };
 
   beforeEach(async () => {
-    ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['search']);
+    ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['search', 'facets']);
     ragApiSpy.search.and.returnValue(of(searchResponse));
+    ragApiSpy.facets.and.returnValue(of({ property: 'cin_sourceId', buckets: [{ value: 'nuxeo:nuxeo-demo', count: 3 }] }));
+    (ragApiSpy as any).facetProperties = ['cin_sourceId'];
 
     await TestBed.configureTestingModule({
       imports: [RagSearchComponent],
@@ -77,9 +79,21 @@ describe('RagSearchComponent', () => {
 
     component.runSearch();
 
-    expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, 'nuxeo');
+    expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, 'nuxeo', undefined);
     expect(component.documents[0].sourceType).toBe('nuxeo');
     expect(component.documents[0].openInSourceUrl).toContain('/nuxeo/ui/#!/browse/');
+  });
+
+  it('toggleFacet_appliesFilterAndReRunsSearch', () => {
+    component.query = 'quarterly report';
+    component.runSearch();
+
+    component.toggleFacet('cin_sourceId', 'nuxeo:nuxeo-demo');
+
+    expect(component.isFacetActive('cin_sourceId', 'nuxeo:nuxeo-demo')).toBeTrue();
+    expect(ragApiSpy.search).toHaveBeenCalledWith(
+      'quarterly report', 5, 0.5, undefined, "cin_sourceId = 'nuxeo:nuxeo-demo'"
+    );
   });
 
   it('canOpenInRepository_matchesNamespacedCurrentAlfrescoSource', () => {

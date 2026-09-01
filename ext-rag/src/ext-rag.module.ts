@@ -9,6 +9,7 @@ import { RagPageComponent } from './lib/components/rag-page/rag-page.component';
 import { RagSidebarComponent } from './lib/components/rag-sidebar/rag-sidebar.component';
 import { ContentLakeSidebarComponent } from './lib/components/content-lake-sidebar/content-lake-sidebar.component';
 import { ContentLakeStatusBadgeComponent } from './lib/components/content-lake-status-badge/content-lake-status-badge.component';
+import { RagStatusComponent } from './lib/components/rag-status/rag-status.component';
 import { RagAuthInterceptor } from './lib/services/rag-auth.interceptor';
 import {
   asNode,
@@ -31,7 +32,8 @@ export function registerRagComponents(extensions: ExtensionService): () => void 
       'ext-rag.page': RagPageComponent,
       'ext-rag.sidebar': RagSidebarComponent,
       'ext-rag.content-lake-sidebar': ContentLakeSidebarComponent,
-      'ext-rag.content-lake-status-badge': ContentLakeStatusBadgeComponent
+      'ext-rag.content-lake-status-badge': ContentLakeStatusBadgeComponent,
+      'ext-rag.status': RagStatusComponent
     });
 
     extensions.setEvaluators({

@@ -16,6 +16,31 @@ export interface SemanticSearchRequest {
   topK?: number;
   minScore?: number;
   sourceType?: ContentSourceType;
+  /** Optional HXQL filter appended to the permission scope (used by faceted search). */
+  filter?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Faceted search (#5)  -  POST /api/rag/search/facets               */
+/* ------------------------------------------------------------------ */
+
+export interface FacetsRequest {
+  /** Property to aggregate on, e.g. `cin_ingestProperties.mimeType`. */
+  property: string;
+  filter?: string;
+  sourceType?: ContentSourceType;
+  searchTerm?: string;
+  topN?: number;
+}
+
+export interface FacetBucket {
+  value: string;
+  count: number;
+}
+
+export interface FacetsResponse {
+  property: string;
+  buckets: FacetBucket[];
 }
 
 export interface SearchResultSourceDocument {
@@ -60,6 +85,9 @@ export interface SemanticSearchResponse {
 /*  RAG Prompt (Q&A)  –  API response                                 */
 /* ------------------------------------------------------------------ */
 
+/** Requested answer shape (#11). `STRUCTURED` additionally returns a typed `structured` object. */
+export type RagResponseFormat = 'TEXT' | 'STRUCTURED';
+
 export interface RagPromptRequest {
   question: string;
   sessionId?: string;
@@ -71,6 +99,10 @@ export interface RagPromptRequest {
   embeddingType?: string;
   systemPrompt?: string;
   includeContext?: boolean;
+  /** #8: let the server infer structured filters from the question before retrieval. */
+  inferFilters?: boolean;
+  /** #11: request a typed structured answer alongside the free text. */
+  responseFormat?: RagResponseFormat;
 }
 
 /**
@@ -90,6 +122,8 @@ export interface RagPromptOptions {
   embeddingType?: string;
   systemPrompt?: string;
   includeContext?: boolean;
+  inferFilters?: boolean;
+  responseFormat?: RagResponseFormat;
 }
 
 /** A single source chunk returned by /prompt */
@@ -103,6 +137,19 @@ export interface PromptSource {
   chunkText: string;
   score: number;
   openInSourceUrl?: string;
+}
+
+/** Citation inside a structured answer (#11). */
+export interface Citation {
+  sourceName: string;
+  quote: string;
+}
+
+/** Typed answer shape (#11), present only when responseFormat=STRUCTURED was requested. */
+export interface StructuredAnswer {
+  summary: string;
+  keyPoints: string[];
+  citations: Citation[];
 }
 
 export interface RagPromptResponse {
@@ -119,6 +166,11 @@ export interface RagPromptResponse {
   sourcesUsed: number;
   sources: PromptSource[];
   context?: PromptContextChunk[];
+  /** #7: present only when citation verification is enabled server-side. */
+  verified?: boolean;
+  unsupportedClaims?: string[];
+  /** #11: present only when responseFormat=STRUCTURED was requested. */
+  structured?: StructuredAnswer;
 }
 
 export interface PromptContextChunk {
@@ -200,4 +252,24 @@ export interface ChatMessage {
   sources?: MergedDocument[];
   loading?: boolean;
   error?: string;
+  // #7 citation faithfulness / #11 structured output (only on assistant messages)
+  verified?: boolean;
+  unsupportedClaims?: string[];
+  structured?: StructuredAnswer;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Operational status (#12)  -  GET /api/status                      */
+/* ------------------------------------------------------------------ */
+
+export interface ModelRunnerStatus {
+  status: string;
+  url?: string;
+}
+
+export interface StatusResponse {
+  hxprStatus: string;
+  totalDocuments: number;
+  sourceCounts: Record<string, number>;
+  embeddingModel: ModelRunnerStatus;
 }

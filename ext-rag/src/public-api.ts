@@ -9,6 +9,7 @@ export { RagChatComponent } from './lib/components/rag-chat/rag-chat.component';
 export { RagSidebarComponent } from './lib/components/rag-sidebar/rag-sidebar.component';
 export { ContentLakeSidebarComponent } from './lib/components/content-lake-sidebar/content-lake-sidebar.component';
 export { ContentLakeStatusBadgeComponent } from './lib/components/content-lake-status-badge/content-lake-status-badge.component';
+export { RagStatusComponent } from './lib/components/rag-status/rag-status.component';
 
 /* Re-export service for advanced integrations */
 export { RagApiService } from './lib/services/rag-api.service';

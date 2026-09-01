@@ -10,7 +10,10 @@ import {
   RagPromptRequest,
   RagPromptOptions,
   RagPromptResponse,
-  RagPromptStreamEvent
+  RagPromptStreamEvent,
+  FacetsRequest,
+  FacetsResponse,
+  StatusResponse
 } from '../models/rag.models';
 import { findEcmTicket } from '../utils/ecm-ticket.util';
 
@@ -37,6 +40,10 @@ export class RagApiService {
   private searchPath: string;
   private promptPath: string;
   private streamPath: string;
+  private facetsPath: string;
+  private statusUrl: string;
+  /** Properties offered in the faceted-search panel (#5). */
+  readonly facetProperties: string[];
 
   constructor(
     private http: HttpClient,
@@ -46,22 +53,48 @@ export class RagApiService {
     this.searchPath = this.appConfig.get<string>('plugins.ragService.searchPath', '/search/semantic');
     this.promptPath = this.appConfig.get<string>('plugins.ragService.promptPath', '/prompt');
     this.streamPath = this.appConfig.get<string>('plugins.ragService.streamPath', '/chat/stream');
+    this.facetsPath = this.appConfig.get<string>('plugins.ragService.facetsPath', '/search/facets');
+    // /api/status is a sibling of /api/rag, not under it.
+    this.statusUrl  = this.appConfig.get<string>('plugins.ragService.statusUrl',  '/api/status');
+    this.facetProperties = this.appConfig.get<string[]>('plugins.ragService.facetProperties',
+      ['cin_sourceId', 'cin_ingestProperties.mimeType']);
   }
 
   /**
    * Semantic search across indexed content-lake chunks.
    */
-  search(query: string, topK = 5, minScore = 0.5, sourceType?: ContentSourceType): Observable<SemanticSearchResponse> {
+  search(query: string, topK = 5, minScore = 0.5, sourceType?: ContentSourceType, filter?: string): Observable<SemanticSearchResponse> {
     const body: SemanticSearchRequest = {
       query,
       topK,
       minScore,
-      ...(sourceType ? { sourceType } : {})
+      ...(sourceType ? { sourceType } : {}),
+      ...(filter ? { filter } : {})
     };
     return this.http.post<SemanticSearchResponse>(
       `${this.baseUrl}${this.searchPath}`,
       body
     );
+  }
+
+  /**
+   * Faceted search (#5): returns the top values of an indexed property with
+   * document counts, scoped to the caller's permissions.
+   */
+  facets(request: FacetsRequest): Observable<FacetsResponse> {
+    return this.http.post<FacetsResponse>(
+      `${this.baseUrl}${this.facetsPath}`,
+      request
+    );
+  }
+
+  /**
+   * Operational status snapshot (#12): hxpr connectivity, per-source document
+   * counts, and embedding-model reachability. Served at /api/status (a sibling
+   * of /api/rag), so it uses its own configured URL.
+   */
+  getStatus(): Observable<StatusResponse> {
+    return this.http.get<StatusResponse>(this.statusUrl);
   }
 
   /**
@@ -188,7 +221,9 @@ export class RagApiService {
       ...(options.sourceType ? { sourceType: options.sourceType } : {}),
       ...(options.embeddingType ? { embeddingType: options.embeddingType } : {}),
       ...(options.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
-      ...(options.includeContext !== undefined ? { includeContext: options.includeContext } : {})
+      ...(options.includeContext !== undefined ? { includeContext: options.includeContext } : {}),
+      ...(options.inferFilters !== undefined ? { inferFilters: options.inferFilters } : {}),
+      ...(options.responseFormat ? { responseFormat: options.responseFormat } : {})
     };
   }
 
@@ -374,7 +409,10 @@ export class RagApiService {
       totalTimeMs: typeof c.totalTimeMs === 'number' ? c.totalTimeMs : 0,
       sourcesUsed: typeof c.sourcesUsed === 'number' ? c.sourcesUsed : (Array.isArray(c.sources) ? c.sources.length : 0),
       sources: Array.isArray(c.sources) ? c.sources : [],
-      context: Array.isArray(c.context) ? c.context : undefined
+      context: Array.isArray(c.context) ? c.context : undefined,
+      verified: typeof c.verified === 'boolean' ? c.verified : undefined,
+      unsupportedClaims: Array.isArray(c.unsupportedClaims) ? c.unsupportedClaims : undefined,
+      structured: (c.structured && typeof c.structured === 'object') ? c.structured : undefined
     };
   }
 
