@@ -130,10 +130,38 @@ export class RagSearchComponent implements OnInit {
     if (property === 'cin_sourceId') {
       return 'Source';
     }
+    if (property.toLowerCase().endsWith('mimetype')) {
+      return 'File type';
+    }
     const segment = property.split('.').pop() ?? property;
-    const spaced = segment.replace(/([A-Z])/g, ' $1').trim();
+    const spaced = segment.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
     return spaced.charAt(0).toUpperCase() + spaced.slice(1);
   }
+
+  /** Human-friendly display for a bucket value (mime types get readable names). */
+  facetValueLabel(property: string, value: string): string {
+    if (property.toLowerCase().endsWith('mimetype')) {
+      return RagSearchComponent.MIME_LABELS[value] ?? value;
+    }
+    return value;
+  }
+
+  private static readonly MIME_LABELS: Record<string, string> = {
+    'text/plain': 'Plain text',
+    'text/html': 'HTML',
+    'text/csv': 'CSV',
+    'application/pdf': 'PDF',
+    'application/msword': 'Word document',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word document',
+    'application/vnd.ms-excel': 'Excel spreadsheet',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel spreadsheet',
+    'application/vnd.ms-powerpoint': 'PowerPoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PowerPoint',
+    'application/rtf': 'Rich text',
+    'application/json': 'JSON',
+    'application/xml': 'XML',
+    'text/xml': 'XML'
+  };
 
   private loadFacets(filter?: string): void {
     const properties = this.ragApi.facetProperties;

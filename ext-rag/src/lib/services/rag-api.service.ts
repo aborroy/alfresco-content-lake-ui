@@ -57,7 +57,7 @@ export class RagApiService {
     // /api/status is a sibling of /api/rag, not under it.
     this.statusUrl  = this.appConfig.get<string>('plugins.ragService.statusUrl',  '/api/status');
     this.facetProperties = this.appConfig.get<string[]>('plugins.ragService.facetProperties',
-      ['cin_sourceId', 'cin_ingestProperties.mimeType']);
+      ['cin_sourceId', 'cin_ingestProperties.source_mimeType']);
   }
 
   /**
