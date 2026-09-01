@@ -40,20 +40,22 @@ ext-rag/
     │   ├── components/
     │   │   ├── rag-chat/                  # Chat-style Q&A component
     │   │   ├── rag-page/                  # Full-page wrapper (tabs: Ask + Search)
-    │   │   ├── rag-search/                # Semantic search component
+    │   │   ├── rag-search/                # Semantic search + facets component
     │   │   ├── rag-sidebar/               # Sidebar wrapper (compact chat)
+    │   │   ├── rag-status/                # Operational status dashboard (/rag-status)
     │   │   ├── content-lake-sidebar/      # Content Lake scope sidebar
     │   │   └── content-lake-status-badge/ # Per-node ingestion status badge
     │   ├── models/
     │   │   └── rag.models.ts              # TypeScript interfaces (API + view models)
     │   ├── services/
-    │   │   ├── rag-api.service.ts         # HTTP client for rag-service
-    │   │   ├── rag-auth.interceptor.ts
+    │   │   ├── rag-api.service.ts         # HTTP client for rag-service (search/prompt/facets/status)
+    │   │   ├── rag-auth.interceptor.ts    # Attaches the Alfresco ticket to /api/rag, /api/content-lake, /api/status
     │   │   ├── rag-chat-session.service.ts        # Chat session state
     │   │   ├── content-lake-scope.service.ts      # Active Content Lake scope
     │   │   └── content-lake-status-batch.service.ts # Batched node status lookups
     │   ├── utils/
     │   │   ├── content-lake-scope.utils.ts
+    │   │   ├── node-path.util.ts
     │   │   └── ecm-ticket.util.ts
     │   └── store/
     │       ├── rag.actions.ts             # NgRx action types

@@ -24,7 +24,11 @@ Part of the **Content Lake** ecosystem -- a PoC for ingesting Alfresco and Nuxeo
 ## Features
 
 * Semantic search panel: free-text query with configurable `topK` / `minScore`, results grouped by document with similarity scores and expandable chunk snippets
+* Faceted search: after a query, narrow results by facet (Source, File type) with per-value document counts; clicking a value applies an HXQL filter and re-queries. Mime types are shown as friendly labels (e.g. "Word document")
 * Chat-style Q&A: natural language questions answered via RAG, displaying the generated answer, model used, timing breakdown, and referenced source documents with chunks
+* Answer options: per-question composer toggles to auto-detect metadata filters from the question (`inferFilters`) and to request a structured answer (summary, key points, citations)
+* Citation faithfulness: when backend verification is enabled (`rag.citation.verify.enabled`), each answer shows a grounded / unsupported badge and lists any unsupported claims
+* Operational status: a "Content Lake Status" view (nav entry + `rag-status` route) showing hxpr connectivity, indexed document counts per source, and embedding-model reachability
 * Mixed-source awareness: search results and citations show the originating source system, support an optional source filter, and open Nuxeo hits in Nuxeo Web UI via backend-provided deep links
 * Document-scoped mode: right-click any document and choose *"Ask AI about this document"* to open the chat pre-scoped to that file
 * Folder-scoped mode: right-click any folder and choose *"Ask AI about this folder"* to scope retrieval to that folder subtree
@@ -90,7 +94,9 @@ Add to `app/src/app.config.json` (see [`config/app.config.snippet.json`](config/
       "baseUrl": "/api/rag",
       "searchPath": "/search/semantic",
       "promptPath": "/prompt",
-      "streamPath": "/chat/stream"
+      "streamPath": "/chat/stream",
+      "facetsPath": "/search/facets",
+      "statusUrl": "/api/status"
     },
     "contentLakeService": {
       "baseUrl": "/api/content-lake"
