@@ -56,6 +56,43 @@ describe('ContentLakeStatusBatchService', () => {
     expect(observed).toEqual(folderStatus);
   }));
 
+  it('getNodeStatus_servesCachedResultWithoutSecondRequest', fakeAsync(() => {
+    const fileStatus: ContentLakeNodeStatus = {
+      nodeId: 'file-1', status: 'INDEXED', exists: true, folder: false,
+      inScope: true, excluded: false, error: null
+    };
+    httpSpy.post.and.returnValue(of({ 'file-1': fileStatus }));
+
+    service.getNodeStatus('file-1').subscribe();
+    flushMicrotasks();
+    expect(httpSpy.post).toHaveBeenCalledTimes(1);
+
+    let observed: ContentLakeNodeStatus | null = null;
+    service.getNodeStatus('file-1').subscribe((s) => { observed = s; });
+    flushMicrotasks();
+
+    expect(httpSpy.post).toHaveBeenCalledTimes(1);
+    expect(observed).toEqual(fileStatus);
+  }));
+
+  it('invalidate_forcesRefetchOnNextCall', fakeAsync(() => {
+    const fileStatus: ContentLakeNodeStatus = {
+      nodeId: 'file-1', status: 'INDEXED', exists: true, folder: false,
+      inScope: true, excluded: false, error: null
+    };
+    httpSpy.post.and.returnValue(of({ 'file-1': fileStatus }));
+
+    service.getNodeStatus('file-1').subscribe();
+    flushMicrotasks();
+    expect(httpSpy.post).toHaveBeenCalledTimes(1);
+
+    service.invalidate('file-1');
+    service.getNodeStatus('file-1').subscribe();
+    flushMicrotasks();
+
+    expect(httpSpy.post).toHaveBeenCalledTimes(2);
+  }));
+
   it('getNodeStatusDetailed_sendsIncludeFolderAggregateFlag', () => {
     const folderStatus: ContentLakeNodeStatus = {
       nodeId: 'folder-1',

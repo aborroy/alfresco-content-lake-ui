@@ -12,11 +12,7 @@ import { ContentLakeStatusBadgeComponent } from './lib/components/content-lake-s
 import { RagAuthInterceptor } from './lib/services/rag-auth.interceptor';
 import {
   asNode,
-  canManageExcludeOverride,
-  canManageFolderExclude,
-  hasIndexedAspect,
-  isContentLakeEnabled,
-  isExcludedFromLake
+  hasIndexedAspect
 } from './lib/utils/content-lake-scope.utils';
 
 function getRuleNode(candidate?: NodeEntry | Node): Node | null {
@@ -40,15 +36,15 @@ export function registerRagComponents(extensions: ExtensionService): () => void 
 
     extensions.setEvaluators({
       'ext-rag.selection.folder.indexed': (context: any) => hasIndexedAspect(context.selection?.folder),
-      'ext-rag.node.file': (_context: any, node: NodeEntry | Node) => !!getRuleNode(node)?.isFile,
-      'ext-rag.node.in-content-lake': (_context: any, node: NodeEntry | Node) => isContentLakeEnabled(getRuleNode(node)),
-      'ext-rag.node.excluded-from-content-lake': (_context: any, node: NodeEntry | Node) => isExcludedFromLake(getRuleNode(node)),
+      // Show the status badge for any file or folder and let the badge
+      // component resolve real ingestion scope via the status API. Document-list
+      // rows are not loaded with `path`/`properties`, so an aspect-based rule
+      // would hide the badge for every indexed file. The badge component hides
+      // itself for out-of-scope nodes.
       'ext-rag.node.content-lake-aware': (_context: any, node: NodeEntry | Node) => {
         const n = getRuleNode(node);
-        return isContentLakeEnabled(n) || isExcludedFromLake(n);
-      },
-      'ext-rag.node.document-override-available': (_context: any, node: NodeEntry | Node) => canManageExcludeOverride(getRuleNode(node)),
-      'ext-rag.node.folder-exclude-available': (_context: any, node: NodeEntry | Node) => canManageFolderExclude(getRuleNode(node))
+        return !!n && (!!n.isFile || !!n.isFolder);
+      }
     });
   };
 }

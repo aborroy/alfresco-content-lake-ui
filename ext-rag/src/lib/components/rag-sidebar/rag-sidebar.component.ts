@@ -4,6 +4,7 @@ import { Store } from '@ngrx/store';
 import { Subject, takeUntil } from 'rxjs';
 
 import { RagChatComponent } from '../rag-chat/rag-chat.component';
+import { resolveNodePath } from '../../utils/node-path.util';
 
 /**
  * Wrapper that injects the compact chat panel into the ACA/ADW sidebar.
@@ -42,7 +43,7 @@ export class RagSidebarComponent implements OnInit, OnDestroy {
           this.nodeId = node.id;
           this.nodeName = node.name;
           this.nodeIsFolder = !!node.isFolder;
-          this.nodePath = this.resolveNodePath(node);
+          this.nodePath = resolveNodePath(node);
         } else {
           this.nodeId = null;
           this.nodeName = null;
@@ -55,27 +56,5 @@ export class RagSidebarComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-  }
-
-  private resolveNodePath(node: any): string | null {
-    const elements = Array.isArray(node?.path?.elements) ? node.path.elements : [];
-    const segments: string[] = [];
-
-    for (const element of elements) {
-      const name = element?.name;
-      if (typeof name === 'string' && name.trim()) {
-        segments.push(name.trim());
-      }
-    }
-
-    if (typeof node?.name === 'string' && node.name.trim()) {
-      segments.push(node.name.trim());
-    }
-
-    if (segments.length === 0) {
-      return null;
-    }
-
-    return `/${segments.join('/')}`;
   }
 }

@@ -73,6 +73,33 @@ describe('RagChatComponent', () => {
     expect(component.sessionSummaries[0].messageCount).toBe(0);
   });
 
+  it('backendSessionId_migratesInPlaceWithoutOrphan', () => {
+    const sessions = TestBed.inject(RagChatSessionService);
+    component.currentQuestion = 'Hello';
+
+    component.ask();
+
+    const summaries = sessions.listSessions();
+    expect(summaries.length).toBe(1);
+    expect(summaries[0].sessionId).toBe('session-from-backend');
+    expect(component.activeSessionId).toBe('session-from-backend');
+  });
+
+  it('interruptedLoadingMessage_isHealedOnReopen', () => {
+    const sessionId = component.activeSessionId as string;
+    const sessions = TestBed.inject(RagChatSessionService);
+    sessions.saveMessages(sessionId, [
+      { id: 'u1', role: 'user', content: 'Hi', timestamp: new Date() },
+      { id: 'a1', role: 'assistant', content: '', timestamp: new Date(), loading: true }
+    ]);
+
+    (component as any).initializeConversationState();
+
+    const assistant = component.messages.find((m) => m.role === 'assistant');
+    expect(assistant?.loading).toBeFalsy();
+    expect(assistant?.error).toContain('interrupted');
+  });
+
   it('sessionScope_passesNodeIdToService', () => {
     component.scopedNodeId = 'node-123';
     component.currentQuestion = 'What is this?';

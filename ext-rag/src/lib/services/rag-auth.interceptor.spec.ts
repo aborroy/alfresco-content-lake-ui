@@ -1,5 +1,5 @@
 import { HttpRequest, HttpHandler, HttpEvent } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { of } from 'rxjs';
 import { AppConfigService } from '@alfresco/adf-core';
 
 import { RagAuthInterceptor } from './rag-auth.interceptor';

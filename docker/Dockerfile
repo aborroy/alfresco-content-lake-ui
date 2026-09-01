@@ -9,8 +9,9 @@
 #   5. Serves the static files with nginx
 #
 # Runtime environment variables:
-#   APP_CONFIG_ECM_HOST  – Alfresco base URL  (default: http://localhost:8080)
-#   APP_CONFIG_RAG_URL   – RAG service URL    (default: http://localhost:9091)
+#   APP_CONFIG_ECM_HOST          - Alfresco base URL       (default: http://localhost:8080)
+#   APP_CONFIG_RAG_URL           - RAG service URL         (default: http://localhost:9091)
+#   APP_CONFIG_CONTENT_LAKE_URL  - batch-ingester base URL (default: http://localhost:9090)
 #
 # Build arguments:
 #   ACA_TAG – Git tag or branch to build from (default: develop)
@@ -79,7 +80,11 @@ RUN node -e " \
   cfg.plugins.ragService = { \
     baseUrl: '/api/rag', \
     searchPath: '/search/semantic', \
-    promptPath: '/prompt' \
+    promptPath: '/prompt', \
+    streamPath: '/chat/stream' \
+  }; \
+  cfg.plugins.contentLakeService = { \
+    baseUrl: '/api/content-lake' \
   }; \
   fs.writeFileSync('app/src/app.config.json', JSON.stringify(cfg, null, 2)); \
 "
@@ -117,5 +122,6 @@ COPY --from=builder /build/dist/content-ce /usr/share/nginx/html/
 # Default environment variables
 ENV APP_CONFIG_ECM_HOST=http://localhost:8080
 ENV APP_CONFIG_RAG_URL=http://localhost:9091
+ENV APP_CONFIG_CONTENT_LAKE_URL=http://localhost:9090
 
 EXPOSE 8080

@@ -18,9 +18,34 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Proxy RAG streaming (SSE) requests
+    # More specific than /api/rag/ so it wins for the chat stream. Buffering and
+    # caching are disabled so tokens flush to the browser as they arrive.
+    location /api/rag/chat/stream {
+        proxy_pass ${APP_CONFIG_RAG_URL}/api/rag/chat/stream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_hide_header WWW-Authenticate;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+    }
+
     # Proxy RAG Service requests
     location /api/rag/ {
         proxy_pass ${APP_CONFIG_RAG_URL}/api/rag/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_hide_header WWW-Authenticate;
+    }
+
+    # Proxy Content Lake node-status requests (batch-ingester)
+    location /api/content-lake/ {
+        proxy_pass ${APP_CONFIG_CONTENT_LAKE_URL}/api/content-lake/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

@@ -6,7 +6,6 @@
   "$license": "Apache-2.0",
 
   "actions": [
-    { "id": "ext-rag.open-chat", "type": "RAG_OPEN_CHAT" },
     { "id": "ext-rag.ask-about", "type": "RAG_ASK_ABOUT", "payload": "$(context.selection.first.entry)" },
     { "id": "ext-rag.scope.enable-folder", "type": "CONTENT_LAKE_ENABLE_FOLDER_SCOPE", "payload": "$(context.selection.first.entry)" },
     { "id": "ext-rag.scope.disable-folder", "type": "CONTENT_LAKE_DISABLE_FOLDER_SCOPE", "payload": "$(context.selection.first.entry)" }

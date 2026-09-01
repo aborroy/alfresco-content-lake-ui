@@ -1,14 +1,24 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 
 import { ContentLakeStatusBadgeComponent } from './content-lake-status-badge.component';
 import { ContentLakeStatusBatchService } from '../../services/content-lake-status-batch.service';
-import { CONTENT_LAKE_INDEXED_ASPECT } from '../../utils/content-lake-scope.utils';
+import { ContentLakeNodeStatus } from '../../models/rag.models';
 
 describe('ContentLakeStatusBadgeComponent', () => {
-  let fixture: ComponentFixture<ContentLakeStatusBadgeComponent>;
   let component: ContentLakeStatusBadgeComponent;
   let batchServiceSpy: jasmine.SpyObj<ContentLakeStatusBatchService>;
+
+  const status = (overrides: Partial<ContentLakeNodeStatus>): ContentLakeNodeStatus => ({
+    nodeId: 'n',
+    status: null,
+    exists: true,
+    folder: false,
+    inScope: false,
+    excluded: false,
+    error: null,
+    ...overrides
+  });
 
   beforeEach(async () => {
     batchServiceSpy = jasmine.createSpyObj<ContentLakeStatusBatchService>('ContentLakeStatusBatchService', ['getNodeStatus']);
@@ -20,65 +30,72 @@ describe('ContentLakeStatusBadgeComponent', () => {
       ]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(ContentLakeStatusBadgeComponent);
-    component = fixture.componentInstance;
+    component = TestBed.createComponent(ContentLakeStatusBadgeComponent).componentInstance;
   });
 
-  it('folderInScope_showsScopeIndicator', () => {
-    component.data = {
-      node: {
-        id: 'folder-1', isFolder: true, isFile: false,
-        aspectNames: [CONTENT_LAKE_INDEXED_ASPECT]
-      } as any
-    };
-    fixture.detectChanges();
+  it('folderInScope_resolvesScopeFromServerAndShows', () => {
+    batchServiceSpy.getNodeStatus.and.returnValue(of(status({ nodeId: 'folder-1', folder: true, inScope: true })));
+    component.data = { node: { id: 'folder-1', isFolder: true, isFile: false } as any };
+    component.ngOnChanges();
 
-    expect(batchServiceSpy.getNodeStatus).not.toHaveBeenCalled();
+    expect(batchServiceSpy.getNodeStatus).toHaveBeenCalledWith('folder-1');
+    expect(component.visible).toBeTrue();
     expect(component.statusIcon).toBe('check_circle');
     expect(component.statusClass).toBe('ext-rag-status-badge--in-scope');
     expect(component.statusTooltip).toBe('Content Lake: In scope');
   });
 
-  it('folderOutOfScope_showsNotInScope', () => {
-    component.data = {
-      node: { id: 'folder-2', isFolder: true, isFile: false, aspectNames: [] } as any
-    };
-    fixture.detectChanges();
+  it('folderExcluded_showsExcludedIndicator', () => {
+    batchServiceSpy.getNodeStatus.and.returnValue(of(status({ nodeId: 'folder-2', folder: true, excluded: true })));
+    component.data = { node: { id: 'folder-2', isFolder: true, isFile: false } as any };
+    component.ngOnChanges();
 
-    expect(batchServiceSpy.getNodeStatus).not.toHaveBeenCalled();
-    expect(component.statusIcon).toBe('remove_circle_outline');
-    expect(component.statusTooltip).toBe('Content Lake: Not in scope');
+    expect(component.visible).toBeTrue();
+    expect(component.statusIcon).toBe('block');
+    expect(component.statusTooltip).toBe('Content Lake: Excluded');
   });
 
-  it('fileNode_usesServerStatus', () => {
-    batchServiceSpy.getNodeStatus.and.returnValue(of({
-      nodeId: 'file-1',
-      status: 'FAILED',
-      exists: true,
-      folder: false,
-      inScope: true,
-      excluded: false,
-      error: 'parse error'
-    }));
+  it('folderOutOfScope_hidesBadge', () => {
+    batchServiceSpy.getNodeStatus.and.returnValue(of(status({ nodeId: 'folder-3', folder: true, inScope: false, excluded: false })));
+    component.data = { node: { id: 'folder-3', isFolder: true, isFile: false } as any };
+    component.ngOnChanges();
 
-    component.data = {
-      node: { id: 'file-1', isFolder: false, isFile: true } as any
-    };
-    fixture.detectChanges();
+    expect(batchServiceSpy.getNodeStatus).toHaveBeenCalledWith('folder-3');
+    expect(component.visible).toBeFalse();
+  });
+
+  it('fileInScope_usesServerStatusAndShows', () => {
+    batchServiceSpy.getNodeStatus.and.returnValue(of(status({ nodeId: 'file-1', inScope: true, status: 'FAILED', error: 'parse error' })));
+    component.data = { node: { id: 'file-1', isFolder: false, isFile: true } as any };
+    component.ngOnChanges();
 
     expect(batchServiceSpy.getNodeStatus).toHaveBeenCalledWith('file-1');
+    expect(component.visible).toBeTrue();
     expect(component.statusIcon).toBe('error');
     expect(component.statusTooltip).toBe('Content Lake status: Error (parse error)');
   });
 
-  it('nonFileOrFolder_showsNotApplicable', () => {
-    component.data = {
-      node: { id: 'node-1', isFolder: false, isFile: false } as any
-    };
-    fixture.detectChanges();
+  it('fileOutOfScope_hidesBadge', () => {
+    batchServiceSpy.getNodeStatus.and.returnValue(of(status({ nodeId: 'file-2', inScope: false })));
+    component.data = { node: { id: 'file-2', isFolder: false, isFile: true } as any };
+    component.ngOnChanges();
+
+    expect(component.visible).toBeFalse();
+  });
+
+  it('missingServerStatus_hidesBadge', () => {
+    batchServiceSpy.getNodeStatus.and.returnValue(of(null));
+    component.data = { node: { id: 'file-3', isFolder: false, isFile: true } as any };
+    component.ngOnChanges();
+
+    expect(component.visible).toBeFalse();
+  });
+
+  it('nonFileOrFolder_hidesBadgeWithoutServerCall', () => {
+    component.data = { node: { id: 'node-1', isFolder: false, isFile: false } as any };
+    component.ngOnChanges();
 
     expect(batchServiceSpy.getNodeStatus).not.toHaveBeenCalled();
-    expect(component.statusIcon).toBe('remove_circle_outline');
-    expect(component.statusTooltip).toBe('Content Lake status: Not applicable');
+    expect(component.visible).toBeFalse();
   });
 });

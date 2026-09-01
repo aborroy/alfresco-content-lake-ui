@@ -17,6 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Subscription } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
@@ -69,6 +70,12 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   private shouldScroll = false;
   private autoScrollEnabled = true;
   private streamRawContent = new Map<string, string>();
+
+  /** In-flight request state, used by the Stop control and throttled persistence. */
+  private requestSubscription?: Subscription;
+  private inflightMessage?: ChatMessage;
+  private lastTokenPersistMs = 0;
+  private static readonly TOKEN_PERSIST_INTERVAL_MS = 400;
 
   constructor(
     private ragApi: RagApiService,
@@ -156,6 +163,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     this.activeSessionId = sessionId;
     this.chatSessions.activateSession(sessionId);
     this.messages = this.chatSessions.getMessages(sessionId);
+    this.healInterruptedMessages();
     this.autoScrollEnabled = true;
     this.refreshSessionSummaries();
     this.shouldScroll = true;
@@ -325,8 +333,30 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   private initializeConversationState(): void {
     this.activeSessionId = this.chatSessions.ensureActiveSession();
     this.messages = this.chatSessions.getMessages(this.activeSessionId);
+    this.healInterruptedMessages();
     this.refreshSessionSummaries();
     this.shouldScroll = true;
+  }
+
+  /**
+   * Clears the `loading` flag on any assistant message rehydrated from storage:
+   * a stream interrupted by a reload or navigation would otherwise leave a
+   * permanently spinning "Thinking..." bubble with no request running.
+   */
+  private healInterruptedMessages(): void {
+    let changed = false;
+    for (const msg of this.messages) {
+      if (msg.role === 'assistant' && msg.loading) {
+        msg.loading = false;
+        changed = true;
+        if (!msg.content?.trim() && !msg.error) {
+          msg.error = 'Response interrupted before it completed. Please ask again.';
+        }
+      }
+    }
+    if (changed) {
+      this.persistMessages();
+    }
   }
 
   private refreshSessionSummaries(): void {
@@ -348,7 +378,9 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     assistantMsg: ChatMessage,
     scopeOptions: Pick<RagPromptOptions, 'nodeId' | 'filter' | 'sourceType'>
   ): void {
-    this.ragApi.streamPrompt(question, {
+    this.inflightMessage = assistantMsg;
+    this.lastTokenPersistMs = 0;
+    this.requestSubscription = this.ragApi.streamPrompt(question, {
       ...scopeOptions,
       sessionId,
       resetSession: isFirstTurn
@@ -359,7 +391,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
           this.streamRawContent.set(assistantMsg.id, raw);
           assistantMsg.content = this.toPlainText(raw);
           this.shouldScroll = this.autoScrollEnabled;
-          this.persistMessages();
+          this.throttlePersistMessages();
           return;
         }
 
@@ -384,6 +416,8 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
         assistantMsg.error = err?.error?.message || err?.message || 'Request failed';
         this.thinking = false;
         this.shouldScroll = this.autoScrollEnabled;
+        this.requestSubscription = undefined;
+        this.inflightMessage = undefined;
         this.persistMessages();
       }
     });
@@ -396,7 +430,8 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     assistantMsg: ChatMessage,
     scopeOptions: Pick<RagPromptOptions, 'nodeId' | 'filter' | 'sourceType'>
   ): void {
-    this.ragApi.prompt(question, {
+    this.inflightMessage = assistantMsg;
+    this.requestSubscription = this.ragApi.prompt(question, {
       ...scopeOptions,
       sessionId,
       resetSession: isFirstTurn
@@ -412,13 +447,20 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
         assistantMsg.error = err?.error?.message || err?.message || 'Request failed';
         this.thinking = false;
         this.shouldScroll = this.autoScrollEnabled;
+        this.requestSubscription = undefined;
+        this.inflightMessage = undefined;
         this.persistMessages();
       }
     });
   }
 
   private applyPromptResponse(assistantMsg: ChatMessage, response: RagPromptResponse): void {
-    if (response.sessionId) {
+    if (response.sessionId && response.sessionId !== this.activeSessionId) {
+      // Migrate the record to the backend id in place so the conversation does
+      // not fork into a second (orphaned) session on the next save.
+      if (this.activeSessionId) {
+        this.chatSessions.renameSession(this.activeSessionId, response.sessionId);
+      }
       this.activeSessionId = response.sessionId;
     }
     if (response.answer) {
@@ -439,6 +481,46 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     assistantMsg.loading = false;
     this.thinking = false;
     this.shouldScroll = this.autoScrollEnabled;
+    this.requestSubscription = undefined;
+    this.inflightMessage = undefined;
+  }
+
+  /**
+   * Cancels an in-flight streaming (or fallback) answer. Aborts the request,
+   * keeps whatever partial content has streamed so far, and re-enables input.
+   */
+  stopStreaming(): void {
+    if (!this.thinking) {
+      return;
+    }
+    this.requestSubscription?.unsubscribe();
+    this.requestSubscription = undefined;
+
+    const msg = this.inflightMessage;
+    if (msg) {
+      this.streamRawContent.delete(msg.id);
+      msg.loading = false;
+      if (!msg.content?.trim() && !msg.error) {
+        msg.error = 'Generation stopped.';
+      }
+    }
+    this.inflightMessage = undefined;
+    this.thinking = false;
+    this.shouldScroll = this.autoScrollEnabled;
+    this.persistMessages();
+  }
+
+  /**
+   * Persists at most once per interval while streaming, so a long answer does
+   * not re-serialize the entire session store on every token. Terminal events
+   * (metadata / done / error / stop) always persist the final state.
+   */
+  private throttlePersistMessages(): void {
+    const now = Date.now();
+    if (now - this.lastTokenPersistMs >= RagChatComponent.TOKEN_PERSIST_INTERVAL_MS) {
+      this.lastTokenPersistMs = now;
+      this.persistMessages();
+    }
   }
 
   private isStreamEndpointUnavailable(error: any): boolean {

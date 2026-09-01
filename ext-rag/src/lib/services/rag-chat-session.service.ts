@@ -92,6 +92,37 @@ export class RagChatSessionService {
     this.persist();
   }
 
+  /**
+   * Migrates an existing session record to the id assigned by the backend.
+   *
+   * The chat starts under a UI-generated id; when the backend returns its own
+   * sessionId the record must be renamed in place, otherwise the next save
+   * creates a second (orphaned) session for the same conversation.
+   */
+  renameSession(oldSessionId: string, newSessionId: string): void {
+    if (!oldSessionId || !newSessionId || oldSessionId === newSessionId) {
+      this.state.activeSessionId = newSessionId || this.state.activeSessionId;
+      return;
+    }
+
+    const session = this.findSession(oldSessionId);
+    if (!session) {
+      this.state.activeSessionId = newSessionId;
+      this.persist();
+      return;
+    }
+
+    if (this.findSession(newSessionId)) {
+      // A record already exists under the backend id: drop the UI-id orphan.
+      this.state.sessions = this.state.sessions.filter((s) => s.sessionId !== oldSessionId);
+    } else {
+      session.sessionId = newSessionId;
+    }
+
+    this.state.activeSessionId = newSessionId;
+    this.persist();
+  }
+
   deleteSession(sessionId: string): void {
     this.state.sessions = this.state.sessions.filter((s) => s.sessionId !== sessionId);
     if (this.state.activeSessionId === sessionId) {

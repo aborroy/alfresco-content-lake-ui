@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, OnDestroy, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Node, NodeEntry } from '@alfresco/js-api';
 import { Subscription, catchError, of } from 'rxjs';
 
-import { ContentLakeSyncStatus } from '../../models/rag.models';
+import { ContentLakeNodeStatus, ContentLakeSyncStatus } from '../../models/rag.models';
 import { ContentLakeStatusBatchService } from '../../services/content-lake-status-batch.service';
-import { asNode, isContentLakeEnabled, isExcludedFromLake } from '../../utils/content-lake-scope.utils';
+import { asNode } from '../../utils/content-lake-scope.utils';
 
 type DocumentStatus = ContentLakeSyncStatus | 'NOT_APPLICABLE' | 'NOT_AVAILABLE';
 
@@ -20,7 +21,7 @@ type FolderScope = 'IN_SCOPE' | 'EXCLUDED' | 'OUT_OF_SCOPE';
 @Component({
   selector: 'ext-rag-content-lake-status-badge',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, MatTooltipModule],
   templateUrl: './content-lake-status-badge.component.html',
   styleUrl: './content-lake-status-badge.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -31,6 +32,9 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
   private readonly batchService = inject(ContentLakeStatusBatchService);
   private readonly cdr = inject(ChangeDetectorRef);
   private statusRequest?: Subscription;
+
+  /** Whether the badge should render at all (hidden for out-of-scope nodes). */
+  visible = false;
 
   private isFolder = false;
   private status: DocumentStatus = 'NOT_AVAILABLE';
@@ -128,48 +132,52 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
     this.isFolder = !!node?.isFolder;
 
     if (!node?.id || (!node.isFile && !node.isFolder)) {
-      this.status = 'NOT_APPLICABLE';
-      this.folderScope = 'OUT_OF_SCOPE';
+      this.visible = false;
       this.cdr.markForCheck();
       return;
     }
 
-    // Folders: derive scope from node aspects (no server call needed).
-    // Detailed ingestion status is available in the Content Lake sidebar.
-    if (node.isFolder) {
-      if (isExcludedFromLake(node)) {
-        this.folderScope = 'EXCLUDED';
-      } else if (isContentLakeEnabled(node)) {
-        this.folderScope = 'IN_SCOPE';
-      } else {
-        this.folderScope = 'OUT_OF_SCOPE';
-      }
-      this.cdr.markForCheck();
-      return;
-    }
-
-    // Files: use the batch service for per-document ingestion status.
+    // Resolve real ingestion scope from the status API for both files and
+    // folders. Document-list rows do not carry `path`/`properties`/aspects, so
+    // scope cannot be derived client-side; the batch service coalesces the
+    // per-row lookups into a single request per render pass.
     this.statusRequest = this.batchService
       .getNodeStatus(node.id)
       .pipe(catchError(() => of(null)))
       .subscribe((nodeStatus) => {
-        if (!nodeStatus) {
-          this.status = 'NOT_AVAILABLE';
-          this.statusError = null;
-          this.cdr.markForCheck();
-          return;
-        }
-
-        if (!nodeStatus.inScope) {
-          this.status = 'NOT_APPLICABLE';
-          this.statusError = null;
-          this.cdr.markForCheck();
-          return;
-        }
-
-        this.status = nodeStatus.status ?? 'PENDING';
-        this.statusError = nodeStatus.error ?? null;
+        this.applyNodeStatus(nodeStatus);
         this.cdr.markForCheck();
       });
+  }
+
+  private applyNodeStatus(nodeStatus: ContentLakeNodeStatus | null): void {
+    if (!nodeStatus) {
+      this.visible = false;
+      return;
+    }
+
+    if (this.isFolder) {
+      if (nodeStatus.excluded) {
+        this.folderScope = 'EXCLUDED';
+        this.visible = true;
+      } else if (nodeStatus.inScope) {
+        this.folderScope = 'IN_SCOPE';
+        this.visible = true;
+      } else {
+        this.folderScope = 'OUT_OF_SCOPE';
+        this.visible = false;
+      }
+      return;
+    }
+
+    // Files: only surface a badge for in-scope documents.
+    if (!nodeStatus.inScope) {
+      this.visible = false;
+      return;
+    }
+
+    this.status = nodeStatus.status ?? 'PENDING';
+    this.statusError = nodeStatus.error ?? null;
+    this.visible = true;
   }
 }

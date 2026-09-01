@@ -25,6 +25,10 @@ export class ContentLakeStatusBatchService {
   private pending = new Map<string, ReplaySubject<ContentLakeNodeStatus | null>>();
   private flushScheduled = false;
 
+  /** Short-lived per-node result cache, so re-renders do not re-request. */
+  private cache = new Map<string, { value: ContentLakeNodeStatus | null; at: number }>();
+  private static readonly CACHE_TTL_MS = 30000;
+
   constructor(
     private readonly http: HttpClient,
     appConfig: AppConfigService
@@ -39,6 +43,11 @@ export class ContentLakeStatusBatchService {
    * that multiple calls made in the same render cycle are batched together.
    */
   getNodeStatus(nodeId: string): Observable<ContentLakeNodeStatus | null> {
+    const cached = this.cache.get(nodeId);
+    if (cached && (Date.now() - cached.at) < ContentLakeStatusBatchService.CACHE_TTL_MS) {
+      return of(cached.value);
+    }
+
     let subject = this.pending.get(nodeId);
     if (!subject) {
       subject = new ReplaySubject<ContentLakeNodeStatus | null>(1);
@@ -69,11 +78,12 @@ export class ContentLakeStatusBatchService {
   }
 
   /**
-   * Invalidate any in-flight batch so that the next call to
-   * {@link getNodeStatus} triggers a fresh request.
+   * Drops the cached result (and any in-flight batch slot) for a node so the
+   * next {@link getNodeStatus} call re-fetches. Call this after a scope change.
    */
   invalidate(nodeId: string): void {
     this.pending.delete(nodeId);
+    this.cache.delete(nodeId);
   }
 
   private scheduleFlush(): void {
@@ -101,8 +111,11 @@ export class ContentLakeStatusBatchService {
       })
       .pipe(catchError(() => of({} as Record<string, ContentLakeNodeStatus>)))
       .subscribe((results) => {
+        const at = Date.now();
         for (const [id, subject] of batch) {
-          subject.next(results[id] ?? null);
+          const value = results[id] ?? null;
+          this.cache.set(id, { value, at });
+          subject.next(value);
           subject.complete();
         }
       });

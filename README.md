@@ -181,6 +181,19 @@ The `docker` directory contains a production-ready Dockerfile that builds ACA wi
 docker build -t alfresco-content-lake-ui -f docker/Dockerfile .
 ```
 
+The image bundles its own nginx, which proxies `/api/rag/` (including the `/api/rag/chat/stream`
+SSE endpoint) and `/api/content-lake/` to the backend services. Point those at your environment
+with the following runtime environment variables:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `APP_CONFIG_ECM_HOST` | Alfresco base URL | `http://localhost:8080` |
+| `APP_CONFIG_RAG_URL` | rag-service base URL | `http://localhost:9091` |
+| `APP_CONFIG_CONTENT_LAKE_URL` | batch-ingester base URL (Content Lake node status) | `http://localhost:9090` |
+
+When the image runs behind the full deployment proxy, that proxy routes `/api/content-lake` and the
+chat stream directly, so these defaults are only used when the image serves those paths on its own.
+
 See [`docker`](docker/) for details on the nginx template and runtime configuration hook.
 
 ## Production deployment (nginx)

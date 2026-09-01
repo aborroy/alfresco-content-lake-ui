@@ -190,8 +190,15 @@
                placeholder="Ask a question…"
                [disabled]="thinking" />
       </mat-form-field>
-      <button mat-icon-button color="primary"
-              [disabled]="!currentQuestion.trim() || thinking"
+      <button *ngIf="thinking"
+              mat-icon-button color="warn"
+              (click)="stopStreaming()"
+              matTooltip="Stop">
+        <mat-icon>stop</mat-icon>
+      </button>
+      <button *ngIf="!thinking"
+              mat-icon-button color="primary"
+              [disabled]="!currentQuestion.trim()"
               (click)="ask()"
               matTooltip="Send">
         <mat-icon>send</mat-icon>

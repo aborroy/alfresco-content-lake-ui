@@ -1,5 +1,6 @@
-<mat-icon class="adf-datatable-cell-badge ext-rag-status-badge"
+<mat-icon *ngIf="visible"
+          class="adf-datatable-cell-badge ext-rag-status-badge"
           [ngClass]="statusClass"
-          [title]="statusTooltip">
+          [matTooltip]="statusTooltip">
   {{ statusIcon }}
 </mat-icon>
