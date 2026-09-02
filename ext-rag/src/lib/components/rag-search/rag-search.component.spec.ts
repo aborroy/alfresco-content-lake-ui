@@ -46,9 +46,10 @@ describe('RagSearchComponent', () => {
   };
 
   beforeEach(async () => {
-    ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['search', 'facets']);
+    ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['search', 'facets', 'getNamedQueries']);
     ragApiSpy.search.and.returnValue(of(searchResponse));
     ragApiSpy.facets.and.returnValue(of({ property: 'cin_sourceId', buckets: [{ value: 'nuxeo:nuxeo-demo', count: 3 }] }));
+    ragApiSpy.getNamedQueries.and.returnValue(of([]));
     (ragApiSpy as any).facetProperties = ['cin_sourceId'];
 
     await TestBed.configureTestingModule({

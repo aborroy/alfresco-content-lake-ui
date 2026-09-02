@@ -17,8 +17,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subscription } from 'rxjs';
-import { take } from 'rxjs/operators';
+import { Subscription, of } from 'rxjs';
+import { take, catchError } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
 import { RagChatSessionService, RagChatSessionSummary } from '../../services/rag-chat-session.service';
@@ -70,6 +70,8 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   currentRepositoryId: string | null = null;
   repositoryResolved = false;
   activeSessionId: string | null = null;
+  /** #10: persistent conversation summary for the active session; null when none/disabled. */
+  conversationSummary: string | null = null;
 
   private shouldScroll = false;
   private autoScrollEnabled = true;
@@ -155,6 +157,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     this.activeSessionId = this.chatSessions.createSession();
     this.messages = [];
     this.currentQuestion = '';
+    this.conversationSummary = null;
     this.autoScrollEnabled = true;
     this.refreshSessionSummaries();
     this.shouldScroll = true;
@@ -170,6 +173,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     this.healInterruptedMessages();
     this.autoScrollEnabled = true;
     this.refreshSessionSummaries();
+    this.loadConversationSummary(sessionId);
     this.shouldScroll = true;
   }
 
@@ -231,7 +235,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     for (const src of sources) {
       const existing = map.get(this.documentKey(src.nodeId, src.sourceId));
       if (existing) {
-        existing.chunks.push({ text: src.chunkText, score: src.score });
+        existing.chunks.push({ text: src.chunkText, score: src.score, chunkType: src.chunkType });
       } else {
         map.set(this.documentKey(src.nodeId, src.sourceId), {
           nodeId: src.nodeId,
@@ -240,7 +244,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
           name: src.name,
           path: src.path,
           score: src.score,
-          chunks: [{ text: src.chunkText, score: src.score }],
+          chunks: [{ text: src.chunkText, score: src.score, chunkType: src.chunkType }],
           openInSourceUrl: src.openInSourceUrl
         });
       }
@@ -339,7 +343,25 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     this.messages = this.chatSessions.getMessages(this.activeSessionId);
     this.healInterruptedMessages();
     this.refreshSessionSummaries();
+    this.loadConversationSummary(this.activeSessionId);
     this.shouldScroll = true;
+  }
+
+  /**
+   * #10: loads the persistent conversation summary for a session. Only queries the backend for a
+   * backend-assigned id (a fresh session still has a client `ui-` id the server has never seen);
+   * best-effort - a disabled feature (404) or any error clears the panel.
+   */
+  private loadConversationSummary(sessionId: string | null): void {
+    if (!sessionId || sessionId.startsWith('ui-')) {
+      this.conversationSummary = null;
+      return;
+    }
+    this.ragApi.getSessionSummary(sessionId)
+      .pipe(take(1), catchError(() => of(null)))
+      .subscribe((res) => {
+        this.conversationSummary = res && res.summary ? res.summary : null;
+      });
   }
 
   /**
@@ -483,6 +505,10 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     assistantMsg.unsupportedClaims = response.unsupportedClaims;
     assistantMsg.structured = response.structured;
     assistantMsg.error = undefined;
+    // #10: refresh the conversation-memory panel from the server-maintained summary when present.
+    if (typeof response.currentSummary === 'string') {
+      this.conversationSummary = response.currentSummary || null;
+    }
   }
 
   /** Per-request feature flags (#8 inferred filters, #11 structured output). */

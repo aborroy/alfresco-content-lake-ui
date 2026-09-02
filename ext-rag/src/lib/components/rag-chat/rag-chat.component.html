@@ -83,6 +83,15 @@
     <!-- Messages area -->
     <div class="rag-chat__messages" #messagesContainer (scroll)="onMessagesScroll()">
 
+      <!-- #10: persistent conversation memory (long-term summary) -->
+      <div *ngIf="conversationSummary" class="rag-chat__memory">
+        <div class="rag-chat__memory-header">
+          <mat-icon>psychology_alt</mat-icon>
+          <span>Conversation memory</span>
+        </div>
+        <p class="rag-chat__memory-text">{{ conversationSummary }}</p>
+      </div>
+
       <!-- Welcome state -->
       <div *ngIf="messages.length === 0" class="rag-chat__welcome">
         <mat-icon>psychology</mat-icon>
@@ -212,8 +221,12 @@
                       {{ openLinkHint(src) }}
                     </span>
                   </div>
-                  <div *ngFor="let chunk of src.chunks" class="rag-chat__source-chunk">
-                    {{ chunk.text }}
+                  <div *ngFor="let chunk of src.chunks"
+                       class="rag-chat__source-chunk"
+                       [class.rag-chat__source-chunk--table]="chunk.chunkType === 'TABLE'">
+                    <span *ngIf="chunk.chunkType === 'TABLE'" class="rag-chat__source-chunk-badge">Table</span>
+                    <pre *ngIf="chunk.chunkType === 'TABLE'" class="rag-chat__source-chunk-table">{{ chunk.text }}</pre>
+                    <ng-container *ngIf="chunk.chunkType !== 'TABLE'">{{ chunk.text }}</ng-container>
                   </div>
                 </div>
               </div>
