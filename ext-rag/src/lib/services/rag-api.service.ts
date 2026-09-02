@@ -13,7 +13,8 @@ import {
   RagPromptStreamEvent,
   FacetsRequest,
   FacetsResponse,
-  StatusResponse
+  StatusResponse,
+  SessionSummaryResponse
 } from '../models/rag.models';
 import { findEcmTicket } from '../utils/ecm-ticket.util';
 
@@ -42,6 +43,7 @@ export class RagApiService {
   private streamPath: string;
   private facetsPath: string;
   private statusUrl: string;
+  private namedQueriesPath: string;
   /** Properties offered in the faceted-search panel (#5). */
   readonly facetProperties: string[];
 
@@ -56,6 +58,7 @@ export class RagApiService {
     this.facetsPath = this.appConfig.get<string>('plugins.ragService.facetsPath', '/search/facets');
     // /api/status is a sibling of /api/rag, not under it.
     this.statusUrl  = this.appConfig.get<string>('plugins.ragService.statusUrl',  '/api/status');
+    this.namedQueriesPath = this.appConfig.get<string>('plugins.ragService.namedQueriesPath', '/named-queries');
     this.facetProperties = this.appConfig.get<string[]>('plugins.ragService.facetProperties',
       ['cin_sourceId', 'cin_ingestProperties.source_mimeType']);
   }
@@ -63,17 +66,37 @@ export class RagApiService {
   /**
    * Semantic search across indexed content-lake chunks.
    */
-  search(query: string, topK = 5, minScore = 0.5, sourceType?: ContentSourceType, filter?: string): Observable<SemanticSearchResponse> {
+  search(query: string, topK = 5, minScore = 0.5, sourceType?: ContentSourceType, filter?: string,
+         namedQuery?: string): Observable<SemanticSearchResponse> {
     const body: SemanticSearchRequest = {
       query,
       topK,
       minScore,
       ...(sourceType ? { sourceType } : {}),
-      ...(filter ? { filter } : {})
+      ...(filter ? { filter } : {}),
+      ...(namedQuery ? { namedQuery } : {})
     };
     return this.http.post<SemanticSearchResponse>(
       `${this.baseUrl}${this.searchPath}`,
       body
+    );
+  }
+
+  /**
+   * Lists the hxpr named-query names registered server-side (#6), for use as saved-search filters.
+   * Apply one by passing `namedQuery` to {@link search}.
+   */
+  getNamedQueries(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}${this.namedQueriesPath}`);
+  }
+
+  /**
+   * Returns the persistent running conversation summary for a session (#10), or a 404 when the
+   * summary feature is disabled server-side. Use the backend-assigned session id.
+   */
+  getSessionSummary(sessionId: string): Observable<SessionSummaryResponse> {
+    return this.http.get<SessionSummaryResponse>(
+      `${this.baseUrl}/sessions/${encodeURIComponent(sessionId)}/summary`
     );
   }
 
@@ -412,7 +435,8 @@ export class RagApiService {
       context: Array.isArray(c.context) ? c.context : undefined,
       verified: typeof c.verified === 'boolean' ? c.verified : undefined,
       unsupportedClaims: Array.isArray(c.unsupportedClaims) ? c.unsupportedClaims : undefined,
-      structured: (c.structured && typeof c.structured === 'object') ? c.structured : undefined
+      structured: (c.structured && typeof c.structured === 'object') ? c.structured : undefined,
+      currentSummary: typeof c.currentSummary === 'string' ? c.currentSummary : undefined
     };
   }
 

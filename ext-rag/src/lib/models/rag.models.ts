@@ -18,6 +18,8 @@ export interface SemanticSearchRequest {
   sourceType?: ContentSourceType;
   /** Optional HXQL filter appended to the permission scope (used by faceted search). */
   filter?: string;
+  /** Optional hxpr named-query name applied as a server-side saved-search filter (#6). */
+  namedQuery?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -60,6 +62,8 @@ export interface SearchResultChunkMetadata {
   page: number;
   paragraph: number;
   chunkLength: number;
+  /** Chunk classification `PROSE` / `TABLE` (#9); absent when the document has no section map. */
+  chunkType?: string;
 }
 
 /** A single chunk hit returned by /search/semantic */
@@ -137,6 +141,8 @@ export interface PromptSource {
   chunkText: string;
   score: number;
   openInSourceUrl?: string;
+  /** Chunk classification `PROSE` / `TABLE` (#9); absent when the document has no section map. */
+  chunkType?: string;
 }
 
 /** Citation inside a structured answer (#11). */
@@ -171,6 +177,8 @@ export interface RagPromptResponse {
   unsupportedClaims?: string[];
   /** #11: present only when responseFormat=STRUCTURED was requested. */
   structured?: StructuredAnswer;
+  /** #10: persistent running conversation summary; present only when the feature is enabled. */
+  currentSummary?: string;
 }
 
 export interface PromptContextChunk {
@@ -181,6 +189,14 @@ export interface PromptContextChunk {
   sourcePath?: string;
   sourceType?: ContentSourceType;
   openInSourceUrl?: string;
+  /** Chunk classification `PROSE` / `TABLE` (#9). */
+  chunkType?: string;
+}
+
+/** #10: GET /api/rag/sessions/{sessionId}/summary */
+export interface SessionSummaryResponse {
+  sessionId: string;
+  summary: string;
 }
 
 export type RagPromptStreamEvent =
@@ -195,6 +211,8 @@ export type RagPromptStreamEvent =
 export interface ChunkSnippet {
   text: string;
   score: number;
+  /** Chunk classification `PROSE` / `TABLE` (#9); drives distinct table rendering. */
+  chunkType?: string;
 }
 
 export interface MergedDocument {

@@ -44,6 +44,9 @@ export class RagSearchComponent implements OnInit {
   topK = 5;
   minScore = 0.5;
   selectedSourceType: ContentSourceType | '' = '';
+  // #6 saved-search filters (hxpr named queries). Empty list hides the selector.
+  namedQueries: string[] = [];
+  selectedNamedQuery = '';
   loading = false;
   error: string | null = null;
   searchTimeMs = 0;
@@ -72,6 +75,14 @@ export class RagSearchComponent implements OnInit {
           this.repositoryResolved = true;
         }
       });
+
+    // #6: load the available named queries for the saved-query selector. Best-effort: on failure
+    // (or none registered) the selector stays hidden and search behaves as before.
+    this.ragApi.getNamedQueries()
+      .pipe(take(1), catchError(() => of([] as string[])))
+      .subscribe((names) => {
+        this.namedQueries = Array.isArray(names) ? names : [];
+      });
   }
 
   runSearch(): void {
@@ -84,7 +95,8 @@ export class RagSearchComponent implements OnInit {
     this.error = null;
     const filter = this.buildFacetFilter();
 
-    this.ragApi.search(q, this.topK, this.minScore, this.selectedSourceType || undefined, filter).subscribe({
+    this.ragApi.search(q, this.topK, this.minScore, this.selectedSourceType || undefined, filter,
+      this.selectedNamedQuery || undefined).subscribe({
       next: (res) => {
         this.searchTimeMs = res.searchTimeMs;
         this.documents = this.mergeResults(res.results);
@@ -214,9 +226,10 @@ export class RagSearchComponent implements OnInit {
       const nodeId = item.sourceDocument.nodeId;
       const sourceId = item.sourceDocument.sourceId;
       const existing = map.get(this.documentKey(nodeId, sourceId));
+      const chunkType = item.chunkMetadata?.chunkType;
       if (existing) {
         existing.score = Math.max(existing.score, item.score);
-        existing.chunks.push({ text: item.chunkText, score: item.score });
+        existing.chunks.push({ text: item.chunkText, score: item.score, chunkType });
       } else {
         map.set(this.documentKey(nodeId, sourceId), {
           nodeId,
@@ -225,7 +238,7 @@ export class RagSearchComponent implements OnInit {
           name: item.sourceDocument.name,
           path: item.sourceDocument.path,
           score: item.score,
-          chunks: [{ text: item.chunkText, score: item.score }],
+          chunks: [{ text: item.chunkText, score: item.score, chunkType }],
           openInSourceUrl: item.sourceDocument.openInSourceUrl
         });
       }

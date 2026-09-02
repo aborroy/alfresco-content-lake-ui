@@ -29,8 +29,9 @@ describe('RagChatComponent', () => {
 
   beforeEach(async () => {
     sessionStorage.clear();
-    ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['prompt', 'streamPrompt']);
+    ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['prompt', 'streamPrompt', 'getSessionSummary']);
     ragApiSpy.prompt.and.returnValue(of(promptResponse));
+    ragApiSpy.getSessionSummary.and.returnValue(of({ sessionId: 'session-from-backend', summary: '' }));
     ragApiSpy.streamPrompt.and.returnValue(of(
       { type: 'metadata', response: promptResponse } as RagPromptStreamEvent,
       { type: 'done' } as RagPromptStreamEvent

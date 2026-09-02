@@ -157,6 +157,38 @@
   line-height: 1.5;
 }
 
+/* #9: table chunks are rendered as a distinct monospace block with a badge. */
+.rag-search__chunk--table {
+  flex-wrap: wrap;
+}
+
+.rag-search__chunk-badge {
+  flex-shrink: 0;
+  align-self: flex-start;
+  background: #ede7f6;
+  color: #5e35b1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rag-search__chunk-table {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  padding: 8px;
+  background: #f7f7f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #333;
+}
+
 .rag-search__empty {
   text-align: center;
   padding: 48px 16px;

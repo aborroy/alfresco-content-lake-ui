@@ -30,6 +30,16 @@
       </select>
     </mat-form-field>
 
+    <mat-form-field *ngIf="namedQueries.length > 0"
+                    appearance="outline"
+                    class="rag-search__param rag-search__param--named-query">
+      <mat-label>Saved query</mat-label>
+      <select matNativeControl [(ngModel)]="selectedNamedQuery">
+        <option value="">None</option>
+        <option *ngFor="let nq of namedQueries" [value]="nq">{{ nq }}</option>
+      </select>
+    </mat-form-field>
+
     <button mat-raised-button color="primary"
             [disabled]="!query.trim() || loading"
             (click)="runSearch()">
@@ -124,9 +134,13 @@
           </p>
 
           <h4>Matching chunks</h4>
-          <div *ngFor="let chunk of doc.chunks" class="rag-search__chunk">
+          <div *ngFor="let chunk of doc.chunks"
+               class="rag-search__chunk"
+               [class.rag-search__chunk--table]="chunk.chunkType === 'TABLE'">
             <span class="rag-search__chunk-score">{{ chunk.score | number:'1.3-3' }}</span>
-            <span class="rag-search__chunk-text">{{ chunk.text }}</span>
+            <span *ngIf="chunk.chunkType === 'TABLE'" class="rag-search__chunk-badge">Table</span>
+            <pre *ngIf="chunk.chunkType === 'TABLE'" class="rag-search__chunk-table">{{ chunk.text }}</pre>
+            <span *ngIf="chunk.chunkType !== 'TABLE'" class="rag-search__chunk-text">{{ chunk.text }}</span>
           </div>
         </div>
       </mat-expansion-panel>

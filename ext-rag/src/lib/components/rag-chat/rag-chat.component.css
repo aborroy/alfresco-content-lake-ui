@@ -393,6 +393,70 @@
   line-height: 1.5;
 }
 
+/* #9: table chunks rendered as a distinct monospace block with a badge. */
+.rag-chat__source-chunk--table {
+  white-space: normal;
+}
+
+.rag-chat__source-chunk-badge {
+  display: inline-block;
+  background: #ede7f6;
+  color: #5e35b1;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rag-chat__source-chunk-table {
+  margin: 4px 0 0;
+  padding: 8px;
+  background: #f7f7f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #333;
+}
+
+/* #10: conversation-memory summary panel. */
+.rag-chat__memory {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: #eaf1fb;
+  border: 1px solid #d3e2f7;
+  border-radius: 8px;
+}
+
+.rag-chat__memory-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2b6ecf;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rag-chat__memory-header mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.rag-chat__memory-text {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #333;
+  white-space: pre-wrap;
+}
+
 .rag-chat__answer-text {
   white-space: pre-wrap;
 }
