@@ -42,6 +42,9 @@ export class ContentLakeSidebarComponent {
   saving = false;
   statusLoading = false;
 
+  /** Node whose pending ingestion already triggered a refresh window. */
+  private pendingWatchNodeId: string | null = null;
+
   constructor(
     private readonly store: Store<any>,
     private readonly scopeService: ContentLakeScopeService,
@@ -53,6 +56,7 @@ export class ContentLakeSidebarComponent {
       .pipe(
         distinctUntilChanged((previous: Node | null, current: Node | null) => previous?.id === current?.id),
         switchMap((node: Node | null) => {
+          this.pendingWatchNodeId = null;
           if (!node?.id) {
             this.nodeEntry = null;
             this.nodeStatus = null;
@@ -82,6 +86,10 @@ export class ContentLakeSidebarComponent {
           this.cdr.markForCheck();
         }
       });
+
+    this.batchService.changes$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshStatus());
   }
 
   get selectedNode(): Node | null {
@@ -226,6 +234,7 @@ export class ContentLakeSidebarComponent {
       return;
     }
 
+    this.pendingWatchNodeId = null;
     this.saving = true;
     this.scopeService
       .setFolderIndexed(this.selectedNode, event.checked)
@@ -247,6 +256,7 @@ export class ContentLakeSidebarComponent {
       return;
     }
 
+    this.pendingWatchNodeId = null;
     this.saving = true;
     this.scopeService
       .setNodeExcluded(this.selectedNode, event.checked)
@@ -264,6 +274,7 @@ export class ContentLakeSidebarComponent {
   }
 
   onRefreshStatus(): void {
+    this.pendingWatchNodeId = null;
     this.refreshStatus(true);
   }
 
@@ -299,8 +310,26 @@ export class ContentLakeSidebarComponent {
         // Only apply if the node hasn't changed while loading
         if (this.selectedNode?.id === nodeId) {
           this.nodeStatus = status;
+          this.watchWhilePending(nodeId, status);
           this.cdr.markForCheck();
         }
       });
+  }
+
+  /**
+   * Starts one bounded refresh window per node that is still being ingested, so the
+   * panel converges on its own. Guarded by {@link pendingWatchNodeId} because each
+   * refresh re-enters here, and restarting the window every time would poll forever.
+   */
+  private watchWhilePending(nodeId: string, status: ContentLakeNodeStatus | null): void {
+    if (!status || this.pendingWatchNodeId === nodeId) {
+      return;
+    }
+
+    const pending = status.status === 'PENDING' || (status.folderSummary?.pendingDocuments ?? 0) > 0;
+    if (pending) {
+      this.pendingWatchNodeId = nodeId;
+      this.batchService.startRefreshWindow();
+    }
   }
 }

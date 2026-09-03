@@ -7,6 +7,7 @@ import { Observable, from, throwError } from 'rxjs';
 import { catchError, switchMap, tap } from 'rxjs/operators';
 
 import { ContentLakeNodeStatus } from '../models/rag.models';
+import { ContentLakeStatusBatchService } from './content-lake-status-batch.service';
 import {
   asNode,
   CONTENT_LAKE_EXCLUDE_PROPERTY_QNAME,
@@ -27,6 +28,7 @@ export class ContentLakeScopeService {
     private readonly nodesApiService: NodesApiService,
     private readonly documentListService: DocumentListService,
     private readonly notifications: NotificationService,
+    private readonly statusBatchService: ContentLakeStatusBatchService,
     private readonly http: HttpClient,
     appConfig: AppConfigService
   ) {
@@ -106,6 +108,10 @@ export class ContentLakeScopeService {
       tap((updatedNode) => {
         this.nodesApiService.nodeUpdated.next(updatedNode.entry);
         this.documentListService.reload();
+        // A scope change affects the whole subtree, and the documents in it only reach
+        // INDEXED once the ingester has processed them, so poll for a while instead of
+        // reading a status that is about to change.
+        this.statusBatchService.startRefreshWindow();
       }),
       catchError((error) => {
         this.notifications.showError(this.getUpdateErrorMessage(error));

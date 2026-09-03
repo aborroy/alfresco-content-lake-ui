@@ -1,4 +1,4 @@
-import { fakeAsync, flushMicrotasks, TestBed } from '@angular/core/testing';
+import { fakeAsync, flushMicrotasks, tick, TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { AppConfigService } from '@alfresco/adf-core';
 import { of } from 'rxjs';
@@ -91,6 +91,73 @@ describe('ContentLakeStatusBatchService', () => {
     flushMicrotasks();
 
     expect(httpSpy.post).toHaveBeenCalledTimes(2);
+  }));
+
+  it('invalidateAll_dropsEveryCachedNodeAndNotifies', fakeAsync(() => {
+    const fileStatus: ContentLakeNodeStatus = {
+      nodeId: 'file-1', status: 'INDEXED', exists: true, folder: false,
+      inScope: true, excluded: false, error: null
+    };
+    httpSpy.post.and.returnValue(of({ 'file-1': fileStatus, 'file-2': fileStatus }));
+
+    service.getNodeStatus('file-1').subscribe();
+    service.getNodeStatus('file-2').subscribe();
+    flushMicrotasks();
+    expect(httpSpy.post).toHaveBeenCalledTimes(1);
+
+    let notified = 0;
+    service.changes$.subscribe(() => notified++);
+    service.invalidateAll();
+
+    service.getNodeStatus('file-1').subscribe();
+    service.getNodeStatus('file-2').subscribe();
+    flushMicrotasks();
+
+    expect(notified).toBe(1);
+    expect(httpSpy.post).toHaveBeenCalledTimes(2);
+  }));
+
+  it('startRefreshWindow_notifiesImmediatelyThenOnIntervalUntilTheWindowCloses', fakeAsync(() => {
+    httpSpy.post.and.returnValue(of({}));
+
+    let notified = 0;
+    service.changes$.subscribe(() => notified++);
+
+    service.startRefreshWindow();
+    expect(notified).toBe(1);
+
+    tick(5000);
+    expect(notified).toBe(2);
+
+    tick(5000);
+    expect(notified).toBe(3);
+
+    // Past the 60s window: whatever it reached, it stops there.
+    tick(60000);
+    const afterWindow = notified;
+    expect(afterWindow).toBeGreaterThan(3);
+
+    tick(60000);
+    expect(notified).toBe(afterWindow);
+  }));
+
+  it('startRefreshWindow_restartsRatherThanStackingTimers', fakeAsync(() => {
+    httpSpy.post.and.returnValue(of({}));
+
+    let notified = 0;
+    service.changes$.subscribe(() => notified++);
+
+    service.startRefreshWindow();
+    tick(2000);
+    service.startRefreshWindow();
+    expect(notified).toBe(2);
+
+    tick(5000);
+    expect(notified).toBe(3);
+
+    service.stopRefreshWindow();
+    tick(60000);
+    expect(notified).toBe(3);
   }));
 
   it('getNodeStatusDetailed_sendsIncludeFolderAggregateFlag', () => {

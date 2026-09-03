@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 import { ContentLakeStatusBadgeComponent } from './content-lake-status-badge.component';
 import { ContentLakeStatusBatchService } from '../../services/content-lake-status-batch.service';
@@ -8,6 +8,7 @@ import { ContentLakeNodeStatus } from '../../models/rag.models';
 describe('ContentLakeStatusBadgeComponent', () => {
   let component: ContentLakeStatusBadgeComponent;
   let batchServiceSpy: jasmine.SpyObj<ContentLakeStatusBatchService>;
+  let changes: Subject<void>;
 
   const status = (overrides: Partial<ContentLakeNodeStatus>): ContentLakeNodeStatus => ({
     nodeId: 'n',
@@ -21,7 +22,12 @@ describe('ContentLakeStatusBadgeComponent', () => {
   });
 
   beforeEach(async () => {
-    batchServiceSpy = jasmine.createSpyObj<ContentLakeStatusBatchService>('ContentLakeStatusBatchService', ['getNodeStatus']);
+    changes = new Subject<void>();
+    batchServiceSpy = jasmine.createSpyObj<ContentLakeStatusBatchService>(
+      'ContentLakeStatusBatchService',
+      ['getNodeStatus'],
+      { changes$: changes.asObservable() }
+    );
 
     await TestBed.configureTestingModule({
       imports: [ContentLakeStatusBadgeComponent],
@@ -89,6 +95,21 @@ describe('ContentLakeStatusBadgeComponent', () => {
     component.ngOnChanges();
 
     expect(component.visible).toBeFalse();
+  });
+
+  it('statusInvalidated_refetchesWithoutRowDataChange', () => {
+    batchServiceSpy.getNodeStatus.and.returnValue(of(status({ nodeId: 'file-4', inScope: false })));
+    component.data = { node: { id: 'file-4', isFolder: false, isFile: true } as any };
+    component.ngOnChanges();
+    expect(component.visible).toBeFalse();
+
+    // Ingestion has since picked the document up; the row data itself never changes.
+    batchServiceSpy.getNodeStatus.and.returnValue(of(status({ nodeId: 'file-4', inScope: true, status: 'INDEXED' })));
+    changes.next();
+
+    expect(batchServiceSpy.getNodeStatus).toHaveBeenCalledTimes(2);
+    expect(component.visible).toBeTrue();
+    expect(component.statusIcon).toBe('check_circle');
   });
 
   it('nonFileOrFolder_hidesBadgeWithoutServerCall', () => {

@@ -80,7 +80,7 @@ describe('RagSearchComponent', () => {
 
     component.runSearch();
 
-    expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, 'nuxeo', undefined);
+    expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, 'nuxeo', undefined, undefined);
     expect(component.documents[0].sourceType).toBe('nuxeo');
     expect(component.documents[0].openInSourceUrl).toContain('/nuxeo/ui/#!/browse/');
   });
@@ -93,7 +93,7 @@ describe('RagSearchComponent', () => {
 
     expect(component.isFacetActive('cin_sourceId', 'nuxeo:nuxeo-demo')).toBeTrue();
     expect(ragApiSpy.search).toHaveBeenCalledWith(
-      'quarterly report', 5, 0.5, undefined, "cin_sourceId = 'nuxeo:nuxeo-demo'"
+      'quarterly report', 5, 0.5, undefined, "cin_sourceId = 'nuxeo:nuxeo-demo'", undefined
     );
   });
 

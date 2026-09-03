@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, OnDestroy, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, Input, OnChanges, OnDestroy, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Node, NodeEntry } from '@alfresco/js-api';
@@ -31,6 +32,7 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
 
   private readonly batchService = inject(ContentLakeStatusBatchService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
   private statusRequest?: Subscription;
 
   /** Whether the badge should render at all (hidden for out-of-scope nodes). */
@@ -40,6 +42,14 @@ export class ContentLakeStatusBadgeComponent implements OnChanges, OnDestroy {
   private status: DocumentStatus = 'NOT_AVAILABLE';
   private statusError: string | null = null;
   private folderScope: FolderScope = 'OUT_OF_SCOPE';
+
+  constructor() {
+    // The row data never changes when scope or ingestion state does, so without this
+    // the badge would keep showing the status it resolved on first render.
+    this.batchService.changes$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshStatus());
+  }
 
   ngOnChanges(): void {
     this.refreshStatus();
