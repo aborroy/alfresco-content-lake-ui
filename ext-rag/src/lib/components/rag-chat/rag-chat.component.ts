@@ -424,11 +424,24 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
 
         if (event.type === 'metadata') {
           this.applyPromptResponse(assistantMsg, event.response);
+          // The server sends the typed view separately, so the answer and its sources render now
+          // and the structured block fills in when its second pass finishes.
+          assistantMsg.structuredPending = this.structuredMode && (assistantMsg.sources?.length ?? 0) > 0;
           this.finishAssistantMessage(assistantMsg);
           this.persistMessages();
           return;
         }
 
+        if (event.type === 'structured') {
+          assistantMsg.structured = event.structured;
+          assistantMsg.structuredPending = false;
+          this.shouldScroll = this.autoScrollEnabled;
+          this.persistMessages();
+          return;
+        }
+
+        // `done`: nothing more is coming, so a structured view that never arrived stops pending.
+        assistantMsg.structuredPending = false;
         this.finishAssistantMessage(assistantMsg);
         this.persistMessages();
       },
@@ -440,6 +453,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
 
         this.streamRawContent.delete(assistantMsg.id);
         assistantMsg.loading = false;
+        assistantMsg.structuredPending = false;
         assistantMsg.error = err?.error?.message || err?.message || 'Request failed';
         this.thinking = false;
         this.shouldScroll = this.autoScrollEnabled;

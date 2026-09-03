@@ -14,7 +14,8 @@ import {
   FacetsRequest,
   FacetsResponse,
   StatusResponse,
-  SessionSummaryResponse
+  SessionSummaryResponse,
+  StructuredAnswer
 } from '../models/rag.models';
 import { findEcmTicket } from '../utils/ecm-ticket.util';
 
@@ -362,6 +363,14 @@ export class RagApiService {
       return;
     }
 
+    if (loweredType === 'structured') {
+      const structured = this.normalizeStructuredAnswer(payload);
+      if (structured) {
+        observer.next({ type: 'structured', structured });
+      }
+      return;
+    }
+
     if (this.looksLikeMetadataEvent(loweredType, payload)) {
       const response = this.normalizePromptResponse(payload, data);
       if (response) {
@@ -382,6 +391,22 @@ export class RagApiService {
     if (data) {
       observer.next({ type: 'token', token: data });
     }
+  }
+
+  /**
+   * The typed view arrives in its own event after `metadata`, because the server derives it in a
+   * second LLM pass over the finished answer and does not make the source list wait for it.
+   */
+  private normalizeStructuredAnswer(payload: unknown): StructuredAnswer | null {
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    const candidate = payload as any;
+    return {
+      summary: typeof candidate.summary === 'string' ? candidate.summary : '',
+      keyPoints: Array.isArray(candidate.keyPoints) ? candidate.keyPoints : [],
+      citations: Array.isArray(candidate.citations) ? candidate.citations : []
+    };
   }
 
   private looksLikeMetadataEvent(eventType: string, payload: unknown): boolean {

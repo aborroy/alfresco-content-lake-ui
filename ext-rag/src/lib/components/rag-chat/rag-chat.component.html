@@ -147,7 +147,11 @@
               </span>
             </div>
 
-            <!-- Structured answer (#11) -->
+            <!-- Structured answer (#11); its second LLM pass lands after the sources -->
+            <div *ngIf="!msg.loading && msg.structuredPending" class="rag-chat__structured-pending">
+              <mat-spinner diameter="16"></mat-spinner>
+              <span>Building the structured view...</span>
+            </div>
             <div *ngIf="!msg.loading && msg.structured" class="rag-chat__structured">
               <div class="rag-chat__structured-summary">{{ msg.structured.summary }}</div>
               <ul *ngIf="msg.structured.keyPoints?.length" class="rag-chat__keypoints">

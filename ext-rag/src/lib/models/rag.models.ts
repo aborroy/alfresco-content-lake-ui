@@ -202,6 +202,8 @@ export interface SessionSummaryResponse {
 export type RagPromptStreamEvent =
   | { type: 'token'; token: string }
   | { type: 'metadata'; response: RagPromptResponse }
+  /** Follows `metadata`: the server derives the typed view in a second pass over the finished answer. */
+  | { type: 'structured'; structured: StructuredAnswer }
   | { type: 'done' };
 
 /* ------------------------------------------------------------------ */
@@ -274,6 +276,8 @@ export interface ChatMessage {
   verified?: boolean;
   unsupportedClaims?: string[];
   structured?: StructuredAnswer;
+  /** True between the metadata event and the structured event that follows it. */
+  structuredPending?: boolean;
 }
 
 /* ------------------------------------------------------------------ */

@@ -171,6 +171,34 @@ describe('RagApiService', () => {
     });
   });
 
+  it('streamPrompt_emitsStructuredEventAfterMetadata', (done) => {
+    // The server derives the typed view in a second pass, so it arrives after the sources.
+    (globalThis as any).fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve(
+      createMockResponse([
+        'event: token\ndata: {"token":"A"}\n\n',
+        'event: metadata\ndata: {"answer":"A","question":"Q","model":"m","searchTimeMs":1,"generationTimeMs":2,"totalTimeMs":3,"sourcesUsed":1,"sources":[]}\n\n',
+        'event: structured\ndata: {"summary":"s","keyPoints":["k1","k2"],"citations":[{"sourceName":"doc","quote":"q"}]}\n\n',
+        'event: done\ndata: {}\n\n'
+      ])
+    ));
+
+    const events: RagPromptStreamEvent[] = [];
+    service.streamPrompt('Q').subscribe({
+      next: (event) => events.push(event),
+      error: (error) => done.fail(error),
+      complete: () => {
+        expect(events.map((event) => event.type)).toEqual(['token', 'metadata', 'structured', 'done']);
+        const structuredEvent = events[2];
+        if (structuredEvent.type === 'structured') {
+          expect(structuredEvent.structured.summary).toBe('s');
+          expect(structuredEvent.structured.keyPoints).toEqual(['k1', 'k2']);
+          expect(structuredEvent.structured.citations).toEqual([{ sourceName: 'doc', quote: 'q' }]);
+        }
+        done();
+      }
+    });
+  });
+
   it('streamPrompt_handlesErrorEvent', (done) => {
     (globalThis as any).fetch = jasmine.createSpy('fetch').and.returnValue(Promise.resolve(
       createMockResponse([

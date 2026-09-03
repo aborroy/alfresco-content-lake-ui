@@ -209,6 +209,62 @@ describe('RagChatComponent', () => {
     expect(assistant?.content).toBe('Define chain\n- check properties');
   });
 
+  it('structuredMode_rendersSourcesFirstThenFillsTheStructuredBlock', () => {
+    component.structuredMode = true;
+    ragApiSpy.streamPrompt.and.returnValue(of(
+      {
+        type: 'metadata',
+        response: {
+          ...promptResponse,
+          sourcesUsed: 1,
+          sources: [
+            {
+              documentId: 'doc-1', nodeId: 'doc-1', name: 'Alice.docx', path: '/x',
+              chunkText: 'a chunk', score: 0.9
+            } as any
+          ],
+          structured: undefined
+        }
+      } as RagPromptStreamEvent,
+      {
+        type: 'structured',
+        structured: { summary: 's', keyPoints: ['k'], citations: [{ sourceName: 'Alice.docx', quote: 'q' }] }
+      } as RagPromptStreamEvent,
+      { type: 'done' } as RagPromptStreamEvent
+    ));
+
+    component.currentQuestion = 'What is a bat?';
+    component.ask();
+
+    const assistant = component.messages.find((message) => message.role === 'assistant');
+    expect(assistant?.sources?.length).toBe(1);
+    expect(assistant?.structured?.summary).toBe('s');
+    // The placeholder is cleared once the second pass lands.
+    expect(assistant?.structuredPending).toBeFalse();
+  });
+
+  it('structuredMode_marksTheStructuredBlockPendingUntilItArrives', () => {
+    component.structuredMode = true;
+    ragApiSpy.streamPrompt.and.returnValue(of(
+      {
+        type: 'metadata',
+        response: {
+          ...promptResponse,
+          sourcesUsed: 1,
+          sources: [{ documentId: 'd', nodeId: 'd', name: 'n', path: '/p', chunkText: 'c', score: 1 } as any],
+          structured: undefined
+        }
+      } as RagPromptStreamEvent
+    ));
+
+    component.currentQuestion = 'What is a bat?';
+    component.ask();
+
+    const assistant = component.messages.find((message) => message.role === 'assistant');
+    expect(assistant?.structuredPending).toBeTrue();
+    expect(assistant?.structured).toBeUndefined();
+  });
+
   it('assistantAnswer_mapsTokenCountFromMetadata', () => {
     component.currentQuestion = 'How many tokens?';
     component.ask();
