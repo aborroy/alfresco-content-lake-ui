@@ -66,8 +66,28 @@ describe('RagAuthInterceptor', () => {
 
     interceptor.intercept(req, handler).subscribe(() => {
       const handledReq = (handler.handle as jasmine.Spy).calls.mostRecent().args[0] as HttpRequest<any>;
-      expect(handledReq.headers.get('Authorization')).toBe(`Basic ${btoa('TICKET_SESSION')}`);
+      expect(handledReq.headers.get('Authorization')).toBe(`Basic ${btoa('TICKET_SESSION:')}`);
       done();
+    });
+  });
+
+  it('sendsTheSameTicketEncodingToRagAndContentLake', (done) => {
+    localStorage.setItem('ticket-ECM', '"TICKET_ALFRESCO"');
+
+    const ragReq = new HttpRequest('GET', '/api/rag/search/semantic');
+    const contentLakeReq = new HttpRequest('GET', '/api/content-lake/nodes/status');
+    const handler = createHandlerWithSpy();
+
+    interceptor.intercept(ragReq, handler).subscribe(() => {
+      const ragHeader = ((handler.handle as jasmine.Spy).calls.mostRecent().args[0] as HttpRequest<any>)
+        .headers.get('Authorization');
+
+      interceptor.intercept(contentLakeReq, handler).subscribe(() => {
+        const contentLakeHeader = ((handler.handle as jasmine.Spy).calls.mostRecent().args[0] as HttpRequest<any>)
+          .headers.get('Authorization');
+        expect(contentLakeHeader).toBe(ragHeader);
+        done();
+      });
     });
   });
 

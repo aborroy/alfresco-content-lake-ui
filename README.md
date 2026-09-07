@@ -251,6 +251,11 @@ ticket from browser storage and sends it in the same format ADF uses for reposit
 `Authorization: Basic base64(ticket:)`. The gateway makes `rag-service` reachable on the same
 origin as Alfresco.
 
+That one encoding goes to every Content Lake path the interceptor covers, `/api/rag`,
+`/api/content-lake` and `/api/status`, with no per-path variation. The trailing colon is required:
+the ticket is the username and the password is empty, and services reject the bare
+`base64(ticket)` form with 401.
+
 ## API contract
 
 The extension expects the following endpoints from [content-lake-app](https://github.com/aborroy/content-lake-app) `rag-service`:
