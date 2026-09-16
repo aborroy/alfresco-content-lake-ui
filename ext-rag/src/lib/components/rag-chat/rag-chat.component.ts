@@ -29,7 +29,7 @@ import {
 } from '../../services/content-source-catalog.service';
 import { RagDeleteSessionDialogComponent } from './rag-delete-session-dialog.component';
 import { ChatMessage, MergedDocument, PromptSource, RagPromptOptions, RagPromptResponse } from '../../models/rag.models';
-import { sourceTypeLabel } from '../../utils/source-label.util';
+import { resolveSourceType, sourceTypeLabel } from '../../utils/source-label.util';
 import { combineFilters, escapeHxqlLiteral, sourceIdClause } from '../../utils/hxql.util';
 
 /** Drops the undefined halves of a scope so the request body carries only what was decided. */
@@ -265,7 +265,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
         map.set(this.documentKey(src.nodeId, src.sourceId), {
           nodeId: src.nodeId,
           sourceId: src.sourceId,
-          sourceType: src.sourceType,
+          sourceType: resolveSourceType(src),
           name: src.name,
           path: src.path,
           score: src.score,

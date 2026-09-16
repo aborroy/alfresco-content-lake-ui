@@ -18,7 +18,7 @@ import {
   ContentSourceOption
 } from '../../services/content-source-catalog.service';
 import { SearchResultItem, MergedDocument, FacetBucket, FacetsResponse } from '../../models/rag.models';
-import { sourceKeyLabel, sourceTypeLabel } from '../../utils/source-label.util';
+import { resolveSourceType, sourceKeyLabel, sourceTypeLabel } from '../../utils/source-label.util';
 import { combineFilters, escapeHxqlLiteral } from '../../utils/hxql.util';
 
 interface FacetGroup {
@@ -259,7 +259,7 @@ export class RagSearchComponent implements OnInit {
         map.set(this.documentKey(nodeId, sourceId), {
           nodeId,
           sourceId,
-          sourceType: item.sourceDocument.sourceType,
+          sourceType: resolveSourceType(item.sourceDocument),
           name: item.sourceDocument.name,
           path: item.sourceDocument.path,
           score: item.score,

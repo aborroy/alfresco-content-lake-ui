@@ -89,9 +89,11 @@ describe('RagSearchComponent', () => {
 
     component.runSearch();
 
+    // The status stub reports nuxeo:nuxeo-demo, so the type is scoped by naming that source rather than
+    // through the sourceType request field, which filters on an ingest property only some adapters set.
     expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, {
-      sourceType: 'nuxeo',
-      filter: undefined,
+      sourceType: undefined,
+      filter: "cin_sourceId = 'nuxeo:nuxeo-demo'",
       namedQuery: undefined,
       topDocuments: undefined
     });

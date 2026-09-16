@@ -90,8 +90,15 @@ describe('ContentSourceCatalogService', () => {
   it('scopesATypeOptionThroughSourceTypeAndAnIdOptionThroughTheFilter', () => {
     const options = optionsFor({ 'cmis:docmgr': 1, 'cmis:archive': 1 });
 
+    // A type is scoped by naming its sources, not through the sourceType request field: that field
+    // filters on the source_type ingest property, which only the Alfresco and Nuxeo adapters populate,
+    // so sourceType: 'cmis' matches nothing against a live index.
     const type = service.find(options, 'cmis')!;
-    expect(service.scope(type)).toEqual({ sourceType: 'cmis', filter: undefined });
+    // Order follows the status response, not the count-sorted order the id-level options use; for an
+    // OR it makes no difference.
+    expect(service.scope(type)).toEqual({
+      filter: "cin_sourceId = 'cmis:docmgr' OR cin_sourceId = 'cmis:archive'"
+    });
 
     // The request models carry no source id, so one repository can only be named in the filter.
     const id = service.find(options, 'cmis:archive')!;
@@ -104,6 +111,19 @@ describe('ContentSourceCatalogService', () => {
 
     expect(service.scope(id, "cin_ingestProperties.source_mimeType = 'application/pdf'").filter)
       .toBe("(cin_ingestProperties.source_mimeType = 'application/pdf') AND (cin_sourceId = 'cmis:docmgr')");
+  });
+
+  it('fallsBackToSourceTypeOnlyForATypeTheIndexReportedNothingFor', () => {
+    // Alfresco and Nuxeo are offered before anything is ingested into them, so they alone can have no
+    // known source ids. Both adapters do populate source_type, so the request field works for them.
+    const options = optionsFor({ 'cmis:docmgr': 1 });
+
+    const alfresco = service.find(options, 'alfresco')!;
+    expect(alfresco.sourceKeys).toEqual([]);
+    expect(service.scope(alfresco)).toEqual({ sourceType: 'alfresco', filter: undefined });
+
+    const cmis = service.find(options, 'cmis')!;
+    expect(service.scope(cmis)).toEqual({ filter: "cin_sourceId = 'cmis:docmgr'" });
   });
 
   it('treatsNoSelectionAsEverySourceAndKeepsTheCallersFilter', () => {

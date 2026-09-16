@@ -35,3 +35,17 @@ export function combineFilters(a?: string, b?: string): string | undefined {
 export function sourceIdClause(sourceKey: string): string {
   return `cin_sourceId = '${escapeHxqlLiteral(sourceKey)}'`;
 }
+
+/**
+ * The clause matching any of several sources, for scoping to a whole source type.
+ *
+ * An OR of equality clauses rather than a prefix match, because `cin_sourceId` is a keyword field and
+ * HXQL answers 400 to `LIKE` on those. `PermissionSourceCatalog` extracts every match of its
+ * `cin_sourceId = '...'` pattern, so each source named here gets its own permission clause.
+ */
+export function sourceIdsClause(sourceKeys: readonly string[]): string | undefined {
+  if (!sourceKeys.length) {
+    return undefined;
+  }
+  return sourceKeys.map(sourceIdClause).join(' OR ');
+}

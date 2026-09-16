@@ -60,3 +60,18 @@ function deslug(type: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+
+/**
+ * The source type of a hit, reading it off the qualified source id when the field is absent.
+ *
+ * Only the Alfresco and Nuxeo adapters put `source_type` on the document, so a hit from a connector
+ * arrives carrying `documentId`, `nodeId` and `sourceId` alone. `sourceId` is the full
+ * `<sourceType>:<sourceId>` value, which is where the type comes from in that case; without this, every
+ * connector-sourced result is labelled as an unknown source.
+ */
+export function resolveSourceType(doc?: { sourceType?: string; sourceId?: string }): string | undefined {
+  if (doc?.sourceType) {
+    return doc.sourceType;
+  }
+  return splitSourceKey(doc?.sourceId ?? '').sourceType || undefined;
+}

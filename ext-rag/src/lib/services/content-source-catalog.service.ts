@@ -3,7 +3,7 @@ import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 
 import { RagApiService } from './rag-api.service';
 import { sourceKeyLabel, sourceTypeLabel, splitSourceKey } from '../utils/source-label.util';
-import { combineFilters, sourceIdClause } from '../utils/hxql.util';
+import { combineFilters, sourceIdClause, sourceIdsClause } from '../utils/hxql.util';
 
 /** One selectable source: a whole type, or one repository within a type. */
 export interface ContentSourceOption {
@@ -13,6 +13,11 @@ export interface ContentSourceOption {
   sourceType: string;
   sourceId?: string;
   label: string;
+  /**
+   * The `cin_sourceId` values this option covers: every source of the type for a type-level option, and
+   * the one source for an id-level option. Empty only for a type the index reported nothing for.
+   */
+  sourceKeys: string[];
   /** Documents this option covers, as reported by `/api/status`. */
   count: number;
 }
@@ -76,19 +81,30 @@ export class ContentSourceCatalogService {
    * Turns a selected option into the request fields that scope a search to it, ANDed with whatever
    * filter the caller already had.
    *
-   * A type-level option uses the published `sourceType` field, which is what the three original options
-   * did and keeps their behaviour byte-identical. An id-level option cannot: the request models carry no
-   * `sourceId`, so it goes through the filter as an equality clause on `cin_sourceId`, which rag-service
-   * treats as naming one source.
+   * Scoping goes through an equality clause on `cin_sourceId` rather than through the `sourceType`
+   * request field, because that is the value actually stored on the document. rag-service reads such a
+   * clause in the caller's own filter as the caller naming a source, and gives it precedence over
+   * everything else when it builds the permission filter, so this narrows the ACL as well as the query.
    */
   scope(option: ContentSourceOption | undefined, existingFilter?: string): SourceScope {
     if (!option || option.key === ContentSourceCatalogService.ALL_SOURCES) {
       return { filter: combineFilters(existingFilter, undefined) };
     }
-    if (option.level === 'type') {
-      return { sourceType: option.sourceType, filter: combineFilters(existingFilter, undefined) };
+    if (option.level === 'id') {
+      return { filter: combineFilters(existingFilter, sourceIdClause(option.key)) };
     }
-    return { filter: combineFilters(existingFilter, sourceIdClause(option.key)) };
+    // A type whose sources the index knows is scoped by naming them, not through the `sourceType`
+    // request field. That field filters on the `source_type` ingest property, which only the Alfresco
+    // and Nuxeo adapters populate: measured against a live stack, `sourceType: 'sample-directory'`
+    // returned zero results for two documents that a bare query returned. Naming the ids matches the
+    // stored `cin_sourceId` and works for every source.
+    const named = sourceIdsClause(option.sourceKeys);
+    if (named) {
+      return { filter: combineFilters(existingFilter, named) };
+    }
+    // Only reachable for Alfresco and Nuxeo before anything is ingested into them, since every other
+    // option exists because the index reported a source for it. Both populate `source_type`.
+    return { sourceType: option.sourceType, filter: combineFilters(existingFilter, undefined) };
   }
 
   /** Finds an option by the key held in a form control. */
@@ -125,6 +141,7 @@ export class ContentSourceCatalogService {
         level: 'type',
         sourceType,
         label: sourceTypeLabel(sourceType),
+        sourceKeys: ids.map((id) => id.key),
         count: ids.reduce((total, id) => total + id.count, 0)
       });
 
@@ -137,6 +154,7 @@ export class ContentSourceCatalogService {
             sourceType,
             sourceId: id.sourceId,
             label: sourceKeyLabel(id.key),
+            sourceKeys: [id.key],
             count: id.count
           });
         }
