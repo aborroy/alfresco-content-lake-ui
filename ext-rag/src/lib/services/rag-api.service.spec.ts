@@ -52,7 +52,7 @@ describe('RagApiService', () => {
   });
 
   it('search_includesSourceTypeWhenProvided', () => {
-    service.search('budget', 7, 0.4, 'nuxeo').subscribe();
+    service.search('budget', 7, 0.4, { sourceType: 'nuxeo' }).subscribe();
 
     expect(httpSpy.post).toHaveBeenCalledWith(
       '/api/rag/search/semantic',
@@ -66,12 +66,47 @@ describe('RagApiService', () => {
   });
 
   it('search_includesFilterWhenProvided', () => {
-    service.search('budget', 5, 0.5, undefined, "cin_sourceId = 'alfresco:acs'").subscribe();
+    service.search('budget', 5, 0.5, { filter: "cin_sourceId = 'alfresco:acs'" }).subscribe();
 
     expect(httpSpy.post).toHaveBeenCalledWith(
       '/api/rag/search/semantic',
       jasmine.objectContaining({ query: 'budget', filter: "cin_sourceId = 'alfresco:acs'" })
     );
+  });
+
+  it('search_carriesAnUnstyledSourceTypeThroughUnchanged', () => {
+    // The union is open (#16), so a CMIS or connector source type reaches the request as it stands.
+    service.search('budget', 5, 0.5, { sourceType: 'sample-directory' }).subscribe();
+
+    expect(httpSpy.post).toHaveBeenCalledWith(
+      '/api/rag/search/semantic',
+      jasmine.objectContaining({ sourceType: 'sample-directory' })
+    );
+  });
+
+  it('search_omitsTheDocumentBudgetUnlessAsked', () => {
+    // #18's fields are opt-in: an untouched search must send exactly what it sent before, or every
+    // existing result set changes.
+    service.search('budget').subscribe();
+
+    const body = httpSpy.post.calls.mostRecent().args[1];
+    expect(body).toEqual({ query: 'budget', topK: 5, minScore: 0.5 });
+  });
+
+  it('search_includesTheDocumentBudgetWhenAsked', () => {
+    service.search('budget', 5, 0.5, { topDocuments: 20, chunksPerDocument: 3 }).subscribe();
+
+    expect(httpSpy.post).toHaveBeenCalledWith(
+      '/api/rag/search/semantic',
+      jasmine.objectContaining({ topDocuments: 20, chunksPerDocument: 3 })
+    );
+  });
+
+  it('getConnectors_returnsNullWhenNoUrlIsConfigured', () => {
+    // /api/connectors is not a rag-service route and nothing proxies it, so with no URL configured the
+    // status page must not guess one (#17).
+    expect(service.connectorsConfigured).toBeFalse();
+    expect(service.getConnectors()).toBeNull();
   });
 
   it('facets_postsToFacetsEndpoint', () => {

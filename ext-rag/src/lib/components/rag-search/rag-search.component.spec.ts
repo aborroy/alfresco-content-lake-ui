@@ -5,7 +5,8 @@ import { of } from 'rxjs';
 
 import { RagSearchComponent } from './rag-search.component';
 import { RagApiService } from '../../services/rag-api.service';
-import { SemanticSearchResponse } from '../../models/rag.models';
+import { ContentSourceCatalogService } from '../../services/content-source-catalog.service';
+import { SemanticSearchResponse, StatusResponse } from '../../models/rag.models';
 
 describe('RagSearchComponent', () => {
   let fixture: ComponentFixture<RagSearchComponent>;
@@ -46,10 +47,18 @@ describe('RagSearchComponent', () => {
   };
 
   beforeEach(async () => {
-    ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['search', 'facets', 'getNamedQueries']);
+    ragApiSpy = jasmine.createSpyObj<RagApiService>(
+      'RagApiService', ['search', 'facets', 'getNamedQueries', 'getStatus']);
     ragApiSpy.search.and.returnValue(of(searchResponse));
     ragApiSpy.facets.and.returnValue(of({ property: 'cin_sourceId', buckets: [{ value: 'nuxeo:nuxeo-demo', count: 3 }] }));
     ragApiSpy.getNamedQueries.and.returnValue(of([]));
+    // The source filter's options come from /api/status (#16).
+    ragApiSpy.getStatus.and.returnValue(of({
+      hxprStatus: 'UP',
+      totalDocuments: 3,
+      sourceCounts: { 'nuxeo:nuxeo-demo': 3 },
+      embeddingModel: { status: 'UP' }
+    } as StatusResponse));
     (ragApiSpy as any).facetProperties = ['cin_sourceId'];
 
     await TestBed.configureTestingModule({
@@ -76,13 +85,47 @@ describe('RagSearchComponent', () => {
 
   it('runSearch_preservesSourceAwareMetadata', () => {
     component.query = 'quarterly report';
-    component.selectedSourceType = 'nuxeo';
+    component.sourceKey = 'nuxeo';
 
     component.runSearch();
 
-    expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, 'nuxeo', undefined, undefined);
+    expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, {
+      sourceType: 'nuxeo',
+      filter: undefined,
+      namedQuery: undefined,
+      topDocuments: undefined
+    });
     expect(component.documents[0].sourceType).toBe('nuxeo');
     expect(component.documents[0].openInSourceUrl).toContain('/nuxeo/ui/#!/browse/');
+  });
+
+  it('runSearch_offersEverySourceTheIndexHoldsAndScopesToOneById', () => {
+    // #16: with two repositories of one type, the id-level option scopes through the filter, since the
+    // request carries no source id.
+    ragApiSpy.getStatus.and.returnValue(of({
+      hxprStatus: 'UP',
+      totalDocuments: 5,
+      sourceCounts: { 'cmis:docmgr': 3, 'cmis:archive': 2 },
+      embeddingModel: { status: 'UP' }
+    } as StatusResponse));
+    // The catalogue caches the first status response for the app's lifetime, so a spec that changes the
+    // answer has to drop that cache before asking again.
+    TestBed.inject(ContentSourceCatalogService).refresh();
+    component.ngOnInit();
+
+    expect(component.sourceOptions.map((o) => o.key))
+      .toEqual(['alfresco', 'nuxeo', 'cmis', 'cmis:docmgr', 'cmis:archive']);
+
+    component.query = 'quarterly report';
+    component.sourceKey = 'cmis:archive';
+    component.runSearch();
+
+    expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, {
+      sourceType: undefined,
+      filter: "cin_sourceId = 'cmis:archive'",
+      namedQuery: undefined,
+      topDocuments: undefined
+    });
   });
 
   it('toggleFacet_appliesFilterAndReRunsSearch', () => {
@@ -92,9 +135,12 @@ describe('RagSearchComponent', () => {
     component.toggleFacet('cin_sourceId', 'nuxeo:nuxeo-demo');
 
     expect(component.isFacetActive('cin_sourceId', 'nuxeo:nuxeo-demo')).toBeTrue();
-    expect(ragApiSpy.search).toHaveBeenCalledWith(
-      'quarterly report', 5, 0.5, undefined, "cin_sourceId = 'nuxeo:nuxeo-demo'", undefined
-    );
+    expect(ragApiSpy.search).toHaveBeenCalledWith('quarterly report', 5, 0.5, {
+      sourceType: undefined,
+      filter: "cin_sourceId = 'nuxeo:nuxeo-demo'",
+      namedQuery: undefined,
+      topDocuments: undefined
+    });
   });
 
   it('canOpenInRepository_matchesNamespacedCurrentAlfrescoSource', () => {

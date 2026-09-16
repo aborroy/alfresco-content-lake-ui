@@ -22,8 +22,23 @@ import { take, catchError } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
 import { RagChatSessionService, RagChatSessionSummary } from '../../services/rag-chat-session.service';
+import {
+  ContentSourceCatalogService,
+  ContentSourceOption,
+  SourceScope
+} from '../../services/content-source-catalog.service';
 import { RagDeleteSessionDialogComponent } from './rag-delete-session-dialog.component';
-import { ChatMessage, ContentSourceType, MergedDocument, PromptSource, RagPromptOptions, RagPromptResponse } from '../../models/rag.models';
+import { ChatMessage, MergedDocument, PromptSource, RagPromptOptions, RagPromptResponse } from '../../models/rag.models';
+import { sourceTypeLabel } from '../../utils/source-label.util';
+import { combineFilters, escapeHxqlLiteral, sourceIdClause } from '../../utils/hxql.util';
+
+/** Drops the undefined halves of a scope so the request body carries only what was decided. */
+function scopeOptions(scope: SourceScope): Pick<RagPromptOptions, 'filter' | 'sourceType'> {
+  return {
+    ...(scope.sourceType ? { sourceType: scope.sourceType } : {}),
+    ...(scope.filter ? { filter: scope.filter } : {})
+  };
+}
 
 let _nextId = 0;
 
@@ -61,7 +76,9 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   messages: ChatMessage[] = [];
   sessionSummaries: RagChatSessionSummary[] = [];
   currentQuestion = '';
-  selectedSourceType: ContentSourceType | '' = '';
+  /** The selected source option's key: '' for every source (#16). */
+  sourceKey = '';
+  sourceOptions: ContentSourceOption[] = [];
   /** #8: ask the server to infer metadata filters from the question. */
   inferFilters = false;
   /** #11: request a typed structured answer alongside the free text. */
@@ -87,11 +104,19 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     private ragApi: RagApiService,
     private discoveryApi: DiscoveryApiService,
     private chatSessions: RagChatSessionService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private sources: ContentSourceCatalogService
   ) {}
 
   ngOnInit(): void {
     this.initializeConversationState();
+
+    // #16: the filter's options come from the index, so a CMIS or connector source is selectable.
+    this.sources.options()
+      .pipe(take(1))
+      .subscribe((options) => {
+        this.sourceOptions = options;
+      });
 
     this.discoveryApi.getEcmProductInfo()
       .pipe(take(1))
@@ -292,12 +317,14 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
     return doc.sourceId ?? 'Unknown source';
   }
 
-  displaySourceType(): ContentSourceType | '' {
-    return this.scopedNodeId ? 'alfresco' : this.selectedSourceType;
+  /** Scoping to an ACA node pins the filter to Alfresco, whatever the control last held. */
+  displaySourceKey(): string {
+    return this.scopedNodeId ? 'alfresco' : this.sourceKey;
   }
 
-  setSelectedSourceType(value: string | null | undefined): void {
-    this.selectedSourceType = value === 'alfresco' || value === 'nuxeo' ? value : '';
+  setSourceKey(value: string | null | undefined): void {
+    const key = (value ?? '').trim();
+    this.sourceKey = this.sources.find(this.sourceOptions, key) ? key : '';
   }
 
   private documentKey(nodeId: string, sourceId?: string): string {
@@ -313,14 +340,7 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   }
 
   private sourceSystemLabel(doc: MergedDocument): string {
-    switch (doc.sourceType) {
-      case 'alfresco':
-        return 'Alfresco';
-      case 'nuxeo':
-        return 'Nuxeo';
-      default:
-        return 'source system';
-    }
+    return sourceTypeLabel(doc.sourceType);
   }
 
   private resolveRepositoryId(repository: unknown): string | null {
@@ -587,46 +607,46 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
   }
 
   private buildScopeOptions(): Pick<RagPromptOptions, 'nodeId' | 'filter' | 'sourceType'> {
-    const sourceType = this.resolvePromptSourceType();
+    const selected = this.selectedSourceScope();
     const nodeId = this.scopedNodeId?.trim();
     if (!nodeId) {
-      return sourceType ? { sourceType } : {};
+      return scopeOptions(selected);
     }
 
     if (!this.scopedNodeIsFolder) {
-      return sourceType ? { nodeId, sourceType } : { nodeId };
+      return { nodeId, ...scopeOptions(selected) };
     }
 
     const pathPrefix = this.scopedNodePath?.trim();
     if (!pathPrefix) {
-      return sourceType ? { sourceType } : {};
+      return scopeOptions(selected);
     }
 
-    const escapedPrefix = this.escapeHxql(pathPrefix);
-    const filterClauses = [
-      `(cin_ingestProperties.source_path >= '${escapedPrefix}' AND cin_ingestProperties.source_path < '${escapedPrefix}\uFFFF')`
-    ];
+    // Left unparenthesised: combineFilters wraps each side, so pre-wrapping would double it up.
+    const escapedPrefix = escapeHxqlLiteral(pathPrefix);
+    let filter: string | undefined =
+      `cin_ingestProperties.source_path >= '${escapedPrefix}' AND cin_ingestProperties.source_path < '${escapedPrefix}\uFFFF'`;
 
     const currentSourceId = this.currentAlfrescoSourceId();
     if (currentSourceId) {
-      filterClauses.unshift(`(cin_sourceId = '${this.escapeHxql(currentSourceId)}')`);
+      filter = combineFilters(sourceIdClause(currentSourceId), filter);
     }
 
-    return {
-      filter: filterClauses.join(' AND '),
-      ...(sourceType ? { sourceType } : {})
-    };
+    return scopeOptions({ sourceType: selected.sourceType, filter: combineFilters(selected.filter, filter) });
   }
 
-  private resolvePromptSourceType(): ContentSourceType | undefined {
+  /**
+   * The source scope for the next question.
+   *
+   * Scoping to an ACA node forces Alfresco, because the node came from this repository. Otherwise the
+   * selected option decides, and an id-level option scopes through the filter rather than through
+   * `sourceType`, since the prompt request carries no source id (#16).
+   */
+  private selectedSourceScope(): SourceScope {
     if (this.scopedNodeId) {
-      return 'alfresco';
+      return { sourceType: 'alfresco' };
     }
-    return this.selectedSourceType || undefined;
-  }
-
-  private escapeHxql(value: string): string {
-    return value.replace(/'/g, "''");
+    return this.sources.scope(this.sources.find(this.sourceOptions, this.sourceKey));
   }
 
   private toPlainText(value: string): string {

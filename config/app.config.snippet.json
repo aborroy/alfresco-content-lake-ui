@@ -8,7 +8,11 @@
       "promptPath": "/prompt",
       "streamPath": "/chat/stream",
       "facetsPath": "/search/facets",
-      "statusUrl": "/api/status"
+      "statusUrl": "/api/status",
+      "namedQueriesPath": "/named-queries",
+      "facetProperties": ["cin_sourceId", "cin_ingestProperties.source_mimeType"],
+      "//connectorsUrl": "Optional. Absolute URL of an ingester's GET /api/connectors, e.g. http://localhost:9096/api/connectors. Not a rag-service route and not proxied, so there is no default; empty hides the status page's connector panel.",
+      "connectorsUrl": ""
     },
     "contentLakeService": {
       "baseUrl": "/api/content-lake"

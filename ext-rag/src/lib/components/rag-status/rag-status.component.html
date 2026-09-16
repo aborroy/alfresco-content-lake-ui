@@ -51,16 +51,63 @@
       <h3>Documents per source</h3>
       <table class="rag-status__table">
         <thead>
-          <tr><th>Source</th><th>Documents</th></tr>
+          <tr><th>Source</th><th>Source id</th><th>Documents</th></tr>
         </thead>
         <tbody>
           <tr *ngFor="let entry of sourceEntries">
-            <td>{{ entry.key }}</td>
+            <td>{{ entry.label }}</td>
+            <td class="rag-status__mono">{{ entry.sourceId || '(none)' }}</td>
             <td>{{ entry.count }}</td>
           </tr>
         </tbody>
       </table>
     </div>
   </ng-container>
+
+  <!-- Loaded connectors (#17). Rendered only when a connectors URL is configured, because
+       /api/connectors is published by an ingester rather than by rag-service. -->
+  <div *ngIf="connectorsConfigured" class="rag-status__sources">
+    <h3>Loaded connectors</h3>
+
+    <div *ngIf="connectorsLoading" class="rag-status__loading">
+      <mat-spinner diameter="20"></mat-spinner>
+      Loading connectors...
+    </div>
+
+    <div *ngIf="connectorsError && !connectorsLoading" class="rag-status__error">
+      <mat-icon>error_outline</mat-icon>
+      {{ connectorsError }}
+    </div>
+
+    <ng-container *ngIf="connectors && !connectorsLoading">
+      <table *ngIf="connectors.connectors.length > 0" class="rag-status__table">
+        <thead>
+          <tr><th>Source type</th><th>Name</th><th>Origin</th><th>Implementation</th><th>Settings</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let connector of connectors.connectors">
+            <td class="rag-status__mono">{{ connector.sourceType }}</td>
+            <td>{{ connector.displayName }}</td>
+            <td class="rag-status__mono">{{ connector.origin }}</td>
+            <td class="rag-status__mono">{{ connector.implementation }}</td>
+            <td>{{ connector.settings }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p *ngIf="connectors.connectors.length === 0" class="rag-status__note">No connectors loaded.</p>
+
+      <!-- A jar that failed to load is the question this panel exists to answer. -->
+      <div *ngIf="connectors.problems.length > 0" class="rag-status__problems">
+        <h4>
+          <mat-icon>report_problem</mat-icon>
+          Failed to load
+        </h4>
+        <ul>
+          <li *ngFor="let problem of connectors.problems">{{ problem }}</li>
+        </ul>
+      </div>
+    </ng-container>
+  </div>
 
 </div>

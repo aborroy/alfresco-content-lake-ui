@@ -17,6 +17,11 @@ export { RagChatSessionService } from './lib/services/rag-chat-session.service';
 export { RagAuthInterceptor } from './lib/services/rag-auth.interceptor';
 export { ContentLakeScopeService } from './lib/services/content-lake-scope.service';
 export { ContentLakeStatusBatchService } from './lib/services/content-lake-status-batch.service';
+export {
+  ContentSourceCatalogService,
+  ContentSourceOption,
+  SourceScope
+} from './lib/services/content-source-catalog.service';
 
 /* Re-export models */
 export * from './lib/models/rag.models';

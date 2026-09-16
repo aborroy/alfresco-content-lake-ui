@@ -13,7 +13,13 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, take } from 'rxjs/operators';
 
 import { RagApiService } from '../../services/rag-api.service';
-import { ContentSourceType, SearchResultItem, MergedDocument, FacetBucket, FacetsResponse } from '../../models/rag.models';
+import {
+  ContentSourceCatalogService,
+  ContentSourceOption
+} from '../../services/content-source-catalog.service';
+import { SearchResultItem, MergedDocument, FacetBucket, FacetsResponse } from '../../models/rag.models';
+import { sourceKeyLabel, sourceTypeLabel } from '../../utils/source-label.util';
+import { combineFilters, escapeHxqlLiteral } from '../../utils/hxql.util';
 
 interface FacetGroup {
   property: string;
@@ -43,13 +49,18 @@ export class RagSearchComponent implements OnInit {
   query = '';
   topK = 5;
   minScore = 0.5;
-  selectedSourceType: ContentSourceType | '' = '';
+  /** #18: distinct documents to ask for. Empty leaves topK owning the budget, as before. */
+  topDocuments?: number;
+  /** The selected source option's key: '' for every source (#16). */
+  sourceKey = '';
+  sourceOptions: ContentSourceOption[] = [];
   // #6 saved-search filters (hxpr named queries). Empty list hides the selector.
   namedQueries: string[] = [];
   selectedNamedQuery = '';
   loading = false;
   error: string | null = null;
   searchTimeMs = 0;
+  documentCount?: number;
   documents: MergedDocument[] = [];
   currentRepositoryId: string | null = null;
   repositoryResolved = false;
@@ -60,10 +71,18 @@ export class RagSearchComponent implements OnInit {
 
   constructor(
     private ragApi: RagApiService,
-    private discoveryApi: DiscoveryApiService
+    private discoveryApi: DiscoveryApiService,
+    private sources: ContentSourceCatalogService
   ) {}
 
   ngOnInit(): void {
+    // #16: the filter's options come from the index, so a CMIS or connector source is selectable.
+    this.sources.options()
+      .pipe(take(1))
+      .subscribe((options) => {
+        this.sourceOptions = options;
+      });
+
     this.discoveryApi.getEcmProductInfo()
       .pipe(take(1))
       .subscribe({
@@ -93,15 +112,22 @@ export class RagSearchComponent implements OnInit {
 
     this.loading = true;
     this.error = null;
-    const filter = this.buildFacetFilter();
+    // The source scope and the facet filter share one `filter` field, so they are combined here.
+    const selected = this.sources.find(this.sourceOptions, this.sourceKey);
+    const scope = this.sources.scope(selected, this.buildFacetFilter());
 
-    this.ragApi.search(q, this.topK, this.minScore, this.selectedSourceType || undefined, filter,
-      this.selectedNamedQuery || undefined).subscribe({
+    this.ragApi.search(q, this.topK, this.minScore, {
+      sourceType: scope.sourceType,
+      filter: scope.filter,
+      namedQuery: this.selectedNamedQuery || undefined,
+      topDocuments: this.topDocuments
+    }).subscribe({
       next: (res) => {
         this.searchTimeMs = res.searchTimeMs;
+        this.documentCount = res.documentCount;
         this.documents = this.mergeResults(res.results);
         this.loading = false;
-        this.loadFacets(filter);
+        this.loadFacets(scope.filter, scope.sourceType);
       },
       error: (err) => {
         this.error = err?.error?.message || err?.message || 'Search request failed';
@@ -155,6 +181,10 @@ export class RagSearchComponent implements OnInit {
     if (property.toLowerCase().endsWith('mimetype')) {
       return RagSearchComponent.MIME_LABELS[value] ?? value;
     }
+    // cin_sourceId buckets are `<sourceType>:<sourceId>`, which is not a label.
+    if (property === 'cin_sourceId') {
+      return sourceKeyLabel(value);
+    }
     return value;
   }
 
@@ -175,13 +205,12 @@ export class RagSearchComponent implements OnInit {
     'text/xml': 'XML'
   };
 
-  private loadFacets(filter?: string): void {
+  private loadFacets(filter?: string, sourceType?: string): void {
     const properties = this.ragApi.facetProperties;
     if (!properties.length) {
       this.facetGroups = [];
       return;
     }
-    const sourceType = this.selectedSourceType || undefined;
 
     forkJoin(
       properties.map((property) =>
@@ -206,18 +235,14 @@ export class RagSearchComponent implements OnInit {
     const byProperty = new Map<string, string[]>();
     for (const facet of this.activeFacets) {
       const clauses = byProperty.get(facet.property) ?? [];
-      clauses.push(`${facet.property} = '${this.escapeHxql(facet.value)}'`);
+      clauses.push(`${facet.property} = '${escapeHxqlLiteral(facet.value)}'`);
       byProperty.set(facet.property, clauses);
     }
-    const combined: string[] = [];
+    let combined: string | undefined;
     for (const clauses of byProperty.values()) {
-      combined.push(clauses.length > 1 ? `(${clauses.join(' OR ')})` : clauses[0]);
+      combined = combineFilters(combined, clauses.length > 1 ? clauses.join(' OR ') : clauses[0]);
     }
-    return combined.join(' AND ');
-  }
-
-  private escapeHxql(value: string): string {
-    return value.replace(/'/g, "''");
+    return combined;
   }
 
   private mergeResults(results: SearchResultItem[]): MergedDocument[] {
@@ -299,14 +324,7 @@ export class RagSearchComponent implements OnInit {
   }
 
   private sourceSystemLabel(doc: MergedDocument): string {
-    switch (doc.sourceType) {
-      case 'alfresco':
-        return 'Alfresco';
-      case 'nuxeo':
-        return 'Nuxeo';
-      default:
-        return 'source system';
-    }
+    return sourceTypeLabel(doc.sourceType);
   }
 
   private resolveRepositoryId(repository: unknown): string | null {

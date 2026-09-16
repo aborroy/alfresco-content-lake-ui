@@ -15,9 +15,21 @@ import {
   FacetsResponse,
   StatusResponse,
   SessionSummaryResponse,
+  ConnectorListing,
   StructuredAnswer
 } from '../models/rag.models';
 import { findEcmTicket } from '../utils/ecm-ticket.util';
+
+/** Everything about a search beyond the query and the two long-standing numeric knobs. */
+export interface SearchOptions {
+  sourceType?: ContentSourceType;
+  filter?: string;
+  namedQuery?: string;
+  /** #18: distinct documents to return chunks from. Ignores `topK` when set. */
+  topDocuments?: number;
+  /** #18: most chunks to take from any one document. */
+  chunksPerDocument?: number;
+}
 
 /**
  * Client for the alfresco-content-lake rag-service REST API.
@@ -45,6 +57,8 @@ export class RagApiService {
   private facetsPath: string;
   private statusUrl: string;
   private namedQueriesPath: string;
+  /** Absolute URL of an ingester's connector listing (#17). Empty switches the panel off. */
+  private connectorsUrl: string;
   /** Properties offered in the faceted-search panel (#5). */
   readonly facetProperties: string[];
 
@@ -60,6 +74,9 @@ export class RagApiService {
     // /api/status is a sibling of /api/rag, not under it.
     this.statusUrl  = this.appConfig.get<string>('plugins.ragService.statusUrl',  '/api/status');
     this.namedQueriesPath = this.appConfig.get<string>('plugins.ragService.namedQueriesPath', '/named-queries');
+    // Not derived from baseUrl: /api/connectors is published by an ingester, not by rag-service, and
+    // the deployment proxy does not forward it (#17). Empty by default, which hides the panel.
+    this.connectorsUrl = this.appConfig.get<string>('plugins.ragService.connectorsUrl', '');
     this.facetProperties = this.appConfig.get<string[]>('plugins.ragService.facetProperties',
       ['cin_sourceId', 'cin_ingestProperties.source_mimeType']);
   }
@@ -67,15 +84,18 @@ export class RagApiService {
   /**
    * Semantic search across indexed content-lake chunks.
    */
-  search(query: string, topK = 5, minScore = 0.5, sourceType?: ContentSourceType, filter?: string,
-         namedQuery?: string): Observable<SemanticSearchResponse> {
+  search(query: string, topK = 5, minScore = 0.5, options: SearchOptions = {}):
+      Observable<SemanticSearchResponse> {
     const body: SemanticSearchRequest = {
       query,
       topK,
       minScore,
-      ...(sourceType ? { sourceType } : {}),
-      ...(filter ? { filter } : {}),
-      ...(namedQuery ? { namedQuery } : {})
+      ...(options.sourceType ? { sourceType: options.sourceType } : {}),
+      ...(options.filter ? { filter: options.filter } : {}),
+      ...(options.namedQuery ? { namedQuery: options.namedQuery } : {}),
+      // #18: omitted unless the caller asked, so an untouched search sends what it always sent.
+      ...(options.topDocuments ? { topDocuments: options.topDocuments } : {}),
+      ...(options.chunksPerDocument ? { chunksPerDocument: options.chunksPerDocument } : {})
     };
     return this.http.post<SemanticSearchResponse>(
       `${this.baseUrl}${this.searchPath}`,
@@ -119,6 +139,27 @@ export class RagApiService {
    */
   getStatus(): Observable<StatusResponse> {
     return this.http.get<StatusResponse>(this.statusUrl);
+  }
+
+  /**
+   * The connectors an ingester has loaded (#17), or null when no URL is configured.
+   *
+   * `RagServiceApplication` excludes `ConnectorSchemaController` from its component scan, so this is not
+   * a rag-service route and there is no same-origin path to fall back on: `connector-batch-ingester`
+   * publishes a port of its own. Returning null rather than guessing is what keeps the panel absent in
+   * a deployment that has not opted in.
+   */
+  getConnectors(): Observable<ConnectorListing> | null {
+    const url = (this.connectorsUrl ?? '').trim();
+    if (!url) {
+      return null;
+    }
+    return this.http.get<ConnectorListing>(url);
+  }
+
+  /** Whether a connector listing is reachable, i.e. whether the panel should render at all. */
+  get connectorsConfigured(): boolean {
+    return !!(this.connectorsUrl ?? '').trim();
   }
 
   /**

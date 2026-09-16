@@ -9,7 +9,15 @@
 /*  Semantic Search  –  API response                                  */
 /* ------------------------------------------------------------------ */
 
-export type ContentSourceType = 'alfresco' | 'nuxeo';
+/**
+ * A source type as reported by rag-service.
+ *
+ * Deliberately open (#16): the index holds whatever has been ingested into it, which today can be a
+ * filesystem tree, a CMIS repository or any plugin connector, and results from those already reach this
+ * extension. `alfresco` and `nuxeo` are the two with dedicated labels; nothing else about them is
+ * special here.
+ */
+export type ContentSourceType = string;
 
 export interface SemanticSearchRequest {
   query: string;
@@ -20,6 +28,10 @@ export interface SemanticSearchRequest {
   filter?: string;
   /** Optional hxpr named-query name applied as a server-side saved-search filter (#6). */
   namedQuery?: string;
+  /** Distinct documents to return chunks from; owns the budget and ignores topK when set (#18). */
+  topDocuments?: number;
+  /** Most chunks to take from any one document (#18). */
+  chunksPerDocument?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -81,6 +93,10 @@ export interface SemanticSearchResponse {
   vectorDimension: number;
   resultCount: number;
   totalCount: number;
+  /** Distinct documents behind `results` (#18). Populated on every response. */
+  documentCount?: number;
+  appliedTopDocuments?: number;
+  appliedChunksPerDocument?: number;
   searchTimeMs: number;
   results: SearchResultItem[];
 }
@@ -162,6 +178,11 @@ export interface RagPromptResponse {
   answer: string;
   question: string;
   sessionId?: string;
+  /**
+   * Correlation key for this answer. Typed so it survives the stream normaliser; it is what
+   * `POST /api/rag/feedback` needs to attach a rating to a specific answer.
+   */
+  requestId?: string;
   retrievalQuery?: string;
   historyTurnsUsed?: number;
   model: string;
@@ -294,4 +315,27 @@ export interface StatusResponse {
   totalDocuments: number;
   sourceCounts: Record<string, number>;
   embeddingModel: ModelRunnerStatus;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Loaded connectors (#17)  -  GET /api/connectors on an ingester    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One connector an ingester has loaded.
+ *
+ * `origin` is `in-tree` for a connector compiled into the build, or the jar it was loaded from.
+ */
+export interface ConnectorInfo {
+  sourceType: string;
+  displayName: string;
+  origin: string;
+  implementation: string;
+  settings: number;
+}
+
+/** `problems` is empty when every jar in the plugin directory loaded. */
+export interface ConnectorListing {
+  connectors: ConnectorInfo[];
+  problems: string[];
 }

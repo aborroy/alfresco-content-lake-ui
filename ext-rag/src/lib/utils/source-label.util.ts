@@ -1,0 +1,62 @@
+/**
+ * Naming a content source, wherever it came from (#16).
+ *
+ * `alfresco` and `nuxeo` are the two types this extension knows by name; anything else is de-slugged
+ * from the type itself, which reads better than the raw value: `sample-directory` becomes
+ * `Sample Directory`. Both the search and chat components used to switch on the two known types and
+ * fall back to the literal string `'source system'`, in two separate copies.
+ */
+
+const TYPE_LABELS: Record<string, string> = {
+  alfresco: 'Alfresco',
+  nuxeo: 'Nuxeo',
+  filesystem: 'Filesystem',
+  cmis: 'CMIS',
+  sharepoint: 'SharePoint'
+};
+
+/** Readable name for a source type, whether or not this build has heard of it. */
+export function sourceTypeLabel(sourceType?: string): string {
+  const type = normalizeType(sourceType);
+  if (!type) {
+    return 'source system';
+  }
+  return TYPE_LABELS[type] ?? deslug(type);
+}
+
+/**
+ * Splits a stored `cin_sourceId` value. The type is everything before the first colon; the id keeps any
+ * further colons, since only the first separates the two.
+ */
+export function splitSourceKey(key: string): { sourceType: string; sourceId: string } {
+  const idx = (key ?? '').indexOf(':');
+  if (idx < 0) {
+    return { sourceType: normalizeType(key), sourceId: '' };
+  }
+  return { sourceType: normalizeType(key.slice(0, idx)), sourceId: key.slice(idx + 1) };
+}
+
+/**
+ * Label for one `<sourceType>:<sourceId>` key. The id is what distinguishes two sources of the same
+ * type, so it is shown when there is one: two CMIS repositories are both "CMIS".
+ */
+export function sourceKeyLabel(key?: string): string {
+  if (!key) {
+    return 'source system';
+  }
+  const { sourceType, sourceId } = splitSourceKey(key);
+  const label = sourceTypeLabel(sourceType);
+  return sourceId ? `${label} (${sourceId})` : label;
+}
+
+function normalizeType(value?: string): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
+function deslug(type: string): string {
+  return type
+    .split(/[-_.]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}

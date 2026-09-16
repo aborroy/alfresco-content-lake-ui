@@ -120,3 +120,40 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+.rag-status__mono {
+  font-family: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  word-break: break-all;
+}
+
+.rag-status__note {
+  margin: 0;
+  font-size: 13px;
+  color: #60708a;
+}
+
+.rag-status__problems {
+  margin-top: 14px;
+}
+
+.rag-status__problems h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #c0392b;
+}
+
+.rag-status__problems h4 mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.rag-status__problems ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12.5px;
+}

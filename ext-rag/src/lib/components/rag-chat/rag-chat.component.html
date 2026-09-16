@@ -42,13 +42,13 @@
       <div class="rag-chat__toolbar-actions">
         <mat-form-field appearance="outline" class="rag-chat__source-filter">
           <mat-label>Source</mat-label>
+          <!-- #16: options come from /api/status, so any ingested source is selectable. -->
           <select matNativeControl
-                  [ngModel]="displaySourceType()"
-                  (ngModelChange)="setSelectedSourceType($event)"
+                  [ngModel]="displaySourceKey()"
+                  (ngModelChange)="setSourceKey($event)"
                   [disabled]="thinking || !!scopedNodeId">
             <option value="">All</option>
-            <option value="alfresco">Alfresco</option>
-            <option value="nuxeo">Nuxeo</option>
+            <option *ngFor="let option of sourceOptions" [value]="option.key">{{ option.label }}</option>
           </select>
         </mat-form-field>
         <label class="rag-chat__feature-toggle"

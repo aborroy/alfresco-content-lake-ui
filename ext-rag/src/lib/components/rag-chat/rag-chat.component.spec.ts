@@ -7,7 +7,7 @@ import { of } from 'rxjs';
 import { RagChatComponent } from './rag-chat.component';
 import { RagApiService } from '../../services/rag-api.service';
 import { RagChatSessionService } from '../../services/rag-chat-session.service';
-import { RagPromptResponse, RagPromptStreamEvent } from '../../models/rag.models';
+import { RagPromptResponse, RagPromptStreamEvent, StatusResponse } from '../../models/rag.models';
 
 describe('RagChatComponent', () => {
   let fixture: ComponentFixture<RagChatComponent>;
@@ -29,9 +29,17 @@ describe('RagChatComponent', () => {
 
   beforeEach(async () => {
     sessionStorage.clear();
-    ragApiSpy = jasmine.createSpyObj<RagApiService>('RagApiService', ['prompt', 'streamPrompt', 'getSessionSummary']);
+    ragApiSpy = jasmine.createSpyObj<RagApiService>(
+      'RagApiService', ['prompt', 'streamPrompt', 'getSessionSummary', 'getStatus']);
     ragApiSpy.prompt.and.returnValue(of(promptResponse));
     ragApiSpy.getSessionSummary.and.returnValue(of({ sessionId: 'session-from-backend', summary: '' }));
+    // The source filter's options come from /api/status (#16).
+    ragApiSpy.getStatus.and.returnValue(of({
+      hxprStatus: 'UP',
+      totalDocuments: 0,
+      sourceCounts: {},
+      embeddingModel: { status: 'UP' }
+    } as StatusResponse));
     ragApiSpy.streamPrompt.and.returnValue(of(
       { type: 'metadata', response: promptResponse } as RagPromptStreamEvent,
       { type: 'done' } as RagPromptStreamEvent

@@ -21,12 +21,19 @@
       <input matInput type="number" [(ngModel)]="minScore" min="0" max="1" step="0.05" />
     </mat-form-field>
 
+    <!-- #18: empty leaves Top K owning the budget, so an untouched search is unchanged. -->
+    <mat-form-field appearance="outline" class="rag-search__param">
+      <mat-label>Documents</mat-label>
+      <input matInput type="number" [(ngModel)]="topDocuments" min="1" max="50"
+             title="Return chunks from at most this many distinct documents. Empty budgets chunks instead." />
+    </mat-form-field>
+
+    <!-- #16: options come from /api/status, so any ingested source is selectable. -->
     <mat-form-field appearance="outline" class="rag-search__param rag-search__param--source">
       <mat-label>Source</mat-label>
-      <select matNativeControl [(ngModel)]="selectedSourceType">
+      <select matNativeControl [(ngModel)]="sourceKey">
         <option value="">All</option>
-        <option value="alfresco">Alfresco</option>
-        <option value="nuxeo">Nuxeo</option>
+        <option *ngFor="let option of sourceOptions" [value]="option.key">{{ option.label }}</option>
       </select>
     </mat-form-field>
 
@@ -84,8 +91,11 @@
   <!-- Results -->
   <div *ngIf="documents.length > 0" class="rag-search__results">
 
+    <!-- documentCount is the server's own count (#18), so the accordion's length is explained rather
+         than being the only number available. -->
     <div class="rag-search__meta">
-      Found <strong>{{ documents.length }}</strong> document{{ documents.length > 1 ? 's' : '' }} in
+      Found <strong>{{ documentCount ?? documents.length }}</strong>
+      document{{ (documentCount ?? documents.length) > 1 ? 's' : '' }} in
       <strong>{{ searchTimeMs }}ms</strong>
     </div>
 

@@ -28,8 +28,10 @@ Part of the **Content Lake** ecosystem -- a PoC for ingesting Alfresco and Nuxeo
 * Chat-style Q&A: natural language questions answered via RAG, displaying the generated answer, model used, timing breakdown, and referenced source documents with chunks
 * Answer options: per-question composer toggles to auto-detect metadata filters from the question (`inferFilters`) and to request a structured answer (summary, key points, citations)
 * Citation faithfulness: when backend verification is enabled (`rag.citation.verify.enabled`), each answer shows a grounded / unsupported badge and lists any unsupported claims
-* Operational status: a "Content Lake Status" view (nav entry + `rag-status` route) showing hxpr connectivity, indexed document counts per source, and embedding-model reachability
-* Mixed-source awareness: search results and citations show the originating source system, support an optional source filter, and open Nuxeo hits in Nuxeo Web UI via backend-provided deep links
+* Operational status: a "Content Lake Status" view (nav entry + `rag-status` route) showing hxpr connectivity, indexed document counts per source, embedding-model reachability, and, when `connectorsUrl` is configured, the connectors an ingester has loaded together with anything that failed to load
+* Mixed-source awareness: search results and citations show the originating source system, and open Nuxeo hits in Nuxeo Web UI via backend-provided deep links
+* Any-source filter: the source filter in search and chat is built from what the index actually holds, so a CMIS repository, a filesystem tree or any plugin connector is selectable without a change here. Two sources of the same type are offered separately and labelled by source id
+* Document budget: ask for a number of distinct documents rather than a number of chunks, and see how many documents answered
 * Document-scoped mode: right-click any document and choose *"Ask AI about this document"* to open the chat pre-scoped to that file
 * Folder-scoped mode: right-click any folder and choose *"Ask AI about this folder"* to scope retrieval to that folder subtree
 * Sidebar tab: compact chat panel in the info-drawer, automatically scoped to the selected document or folder.
@@ -45,7 +47,7 @@ Part of the **Content Lake** ecosystem -- a PoC for ingesting Alfresco and Nuxeo
 * A running [content-lake-app](https://github.com/aborroy/content-lake-app) deployment with `rag-service` available
 * The `content-lake-repo-model` module deployed in Alfresco Repository so `cl:indexed` and `cl:excludeFromLake` exist
 * ACA (Alfresco Content App) source checkout, or ADW (Alfresco Digital Workspace) source
-* Node.js 18+
+* Node.js 24 (what `docker/Dockerfile` builds with, and what ACA 7.4.x requires)
 
 ## Install into ACA
 
@@ -96,7 +98,10 @@ Add to `app/src/app.config.json` (see [`config/app.config.snippet.json`](config/
       "promptPath": "/prompt",
       "streamPath": "/chat/stream",
       "facetsPath": "/search/facets",
-      "statusUrl": "/api/status"
+      "statusUrl": "/api/status",
+      "namedQueriesPath": "/named-queries",
+      "facetProperties": ["cin_sourceId", "cin_ingestProperties.source_mimeType"],
+      "connectorsUrl": ""
     },
     "contentLakeService": {
       "baseUrl": "/api/content-lake"
@@ -104,6 +109,13 @@ Add to `app/src/app.config.json` (see [`config/app.config.snippet.json`](config/
   }
 }
 ```
+
+Every key has a default, so a partial block works. Two are worth reading before you set them:
+
+| Key | Default | Notes |
+|---|---|---|
+| `statusUrl` | `/api/status` | A *sibling* of `baseUrl`, not a child, so it is configured separately. Also the source of the search and chat source filters, which are built from its `sourceCounts`. |
+| `connectorsUrl` | `""` (feature off) | Absolute URL of an ingester's `GET /api/connectors`, e.g. `http://localhost:9096/api/connectors`. There is deliberately no same-origin default: that endpoint is published by each ingester rather than by `rag-service`, and the deployment proxy does not forward it. Left empty, the status page omits its connector panel and issues no request. In the Docker image, set the `CONNECTORS_URL` environment variable instead of editing the file. |
 
 ### 5. Configure the dev proxy
 
@@ -275,6 +287,15 @@ Semantic search across indexed content-lake chunks.
 }
 ```
 
+`sourceType` scopes to a whole source type. To scope to one repository where several share a type, put an
+equality clause on `cin_sourceId` in `filter` instead: `"filter": "cin_sourceId = 'cmis:docmgr'"`. The
+request carries no `sourceId` field, and `rag-service` reads that clause as the caller naming one source,
+narrowing the permission filter with it.
+
+`topDocuments` and `chunksPerDocument` are optional. `topK` is a budget of *chunks*, so ten results can be
+two documents; when `topDocuments` is present it owns the budget instead and `topK` is ignored. Both
+omitted leaves retrieval exactly as it was.
+
 **Response:**
 
 ```json
@@ -284,6 +305,7 @@ Semantic search across indexed content-lake chunks.
   "vectorDimension": 1024,
   "resultCount": 2,
   "totalCount": 2,
+  "documentCount": 2,
   "searchTimeMs": 739,
   "results": [
     {
@@ -375,6 +397,19 @@ Expected SSE events:
 - `event: metadata` with final response payload (`RagPromptResponse`)
 - `event: done` to close the stream
 - `event: error` for terminal stream errors
+
+### Other endpoints this extension calls
+
+Each is optional: a failure disables the feature it feeds rather than breaking search or chat.
+
+| Endpoint | Used for |
+|---|---|
+| `POST /api/rag/search/facets` | The facet chips. Body `{property, topN, filter?, sourceType?}`; response `{property, buckets[{value, count}]}` |
+| `GET /api/rag/named-queries` | The saved-query selector. Response is a list of names; an empty list hides the selector |
+| `GET /api/rag/sessions/{sessionId}/summary` | The conversation-memory panel. 404 means there is no summary yet. Use the backend-assigned session id, not the client-side one |
+| `GET /api/status` | The status view, and the set of options in the source filters. Response `{hxprStatus, totalDocuments, sourceCounts, embeddingModel}`, where `sourceCounts` is keyed `<sourceType>:<sourceId>` |
+| `GET /api/connectors` | The status view's connector panel, when `connectorsUrl` is set. Response `{connectors[{sourceType, displayName, origin, implementation, settings}], problems[]}`. Published by an ingester, not by `rag-service` |
+| `POST /api/content-lake/nodes/status` | The scope badges and the Content Lake sidebar. Body `{nodeIds[], includeFolderAggregate?}` |
 
 ## Development
 
