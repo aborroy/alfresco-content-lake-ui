@@ -187,7 +187,9 @@ The mechanism is identical, only the paths change since ADW uses Nx:
 
 1. Place the extension under `libs/ext-rag/` (or generate a new Nx lib and copy the source)
 2. Update `tsconfig.base.json` to map `@myorg/ext-rag` > `libs/ext-rag/src/public-api.ts`
-3. Import `ExtRagModule` in `apps/content-ee/src/app/extension.module.ts`
+3. Spread `provideRagExtension()` into the application's extension providers in
+   `apps/content-ee/src/app/extension.module.ts`, exactly as the ACA steps above do. `ExtRagModule` is
+   deprecated and kept only for callers that predate the provider
 4. Add the plugin JSON asset in `angular.json` under `content-ee` build assets
 5. Configure proxy / gateway the same way
 
@@ -413,21 +415,34 @@ Each is optional: a failure disables the feature it feeds rather than breaking s
 
 ## Development
 
-`ext-rag/` is a source bundle, not a standalone Angular workspace. To build or test it, sync it
-into an ACA checkout first:
+`ext-rag/` is a source bundle, not a standalone Angular workspace: there is no `package.json`, no
+`angular.json` and no test target here, so nothing can be built or tested in place. Work against an ACA
+checkout.
+
+**Sync changed files individually.** The test harness exists only in the ACA clone, not in this bundle:
+`projects/ext-rag/project.json`, `test.ts`, `tsconfig.spec.json` and `karma.conf.js` have no counterpart
+here. Copying the directory over the top (`cp -r`, `rsync --delete`) deletes them, and the ACA clone is not
+a git repository, so there is nothing to restore them from.
 
 ```bash
-# From your alfresco-content-app clone:
-cp -r /path/to/alfresco-content-lake-ui/ext-rag projects/ext-rag
+# From your alfresco-content-app clone, per changed file:
+cp /path/to/alfresco-content-lake-ui/ext-rag/src/lib/components/rag-chat/rag-chat.component.ts \
+   projects/ext-rag/src/lib/components/rag-chat/rag-chat.component.ts
 ```
 
-Then run Angular commands from the ACA workspace:
+Then, from the ACA workspace:
 
 ```bash
-npm start                        # serve ACA with ext-rag loaded
-ng build ext-rag                 # build the extension library
-ng test ext-rag                  # run extension unit tests
+npm start                                                   # serve ACA with ext-rag loaded
+CHROME_BIN=<chrome> npx nx test ext-rag --watch=false       # the extension's unit tests
+npx nx build content-ce --configuration=production --skip-nx-cache
 ```
 
-Do not run Angular builds or tests from `alfresco-content-lake-ui/` directly -- the workspace
-scaffolding lives in the ACA clone.
+Two things to know about those last two commands. There is no `build` target for `ext-rag` (its
+`project.json` declares `test` only), so the extension is type-checked and AOT-compiled by building the
+application that consumes it, not on its own. And `--skip-nx-cache` is not optional: `projects/ext-rag` is
+not a declared dependency of the app project, so Nx does not consider an ext-rag edit a cache miss and will
+replay the previous artefact, timestamp and all.
+
+A plain ACA clone also fails that production build on `main exceeded maximum budget ... 5.00 MB`. Raise the
+budget in `app/project.json` to `6mb` for the run, as `docker/Dockerfile` does, and put it back afterwards.

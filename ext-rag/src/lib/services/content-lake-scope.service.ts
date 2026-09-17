@@ -1,12 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { DocumentListService, AlfrescoApiService, NodesApiService } from '@alfresco/adf-content-services';
 import { Node, NodeBodyUpdate, NodeEntry, NodesApi } from '@alfresco/js-api';
-import { AppConfigService, NotificationService } from '@alfresco/adf-core';
+import { NotificationService } from '@alfresco/adf-core';
 import { Observable, from, throwError } from 'rxjs';
 import { catchError, switchMap, tap } from 'rxjs/operators';
 
-import { ContentLakeNodeStatus } from '../models/rag.models';
 import { ContentLakeStatusBatchService } from './content-lake-status-batch.service';
 import {
   asNode,
@@ -21,30 +19,17 @@ import {
 @Injectable({ providedIn: 'root' })
 export class ContentLakeScopeService {
   private nodesApiInstance: NodesApi | null = null;
-  private readonly statusBaseUrl: string;
 
   constructor(
     private readonly alfrescoApi: AlfrescoApiService,
     private readonly nodesApiService: NodesApiService,
     private readonly documentListService: DocumentListService,
     private readonly notifications: NotificationService,
-    private readonly statusBatchService: ContentLakeStatusBatchService,
-    private readonly http: HttpClient,
-    appConfig: AppConfigService
-  ) {
-    this.statusBaseUrl = appConfig.get<string>('plugins.contentLakeService.baseUrl', '/api/content-lake');
-  }
+    private readonly statusBatchService: ContentLakeStatusBatchService
+  ) {}
 
   getNode(nodeId: string): Observable<NodeEntry> {
     return from(this.nodesApi.getNode(nodeId, { include: ['path', 'properties', 'allowableOperations', 'permissions', 'aspectNames'] }));
-  }
-
-  getNodeStatus(nodeId: string): Observable<ContentLakeNodeStatus> {
-    return this.http.get<ContentLakeNodeStatus>(`${this.statusBaseUrl}/nodes/${nodeId}/status`);
-  }
-
-  getNodesStatus(nodeIds: string[]): Observable<Record<string, ContentLakeNodeStatus>> {
-    return this.http.post<Record<string, ContentLakeNodeStatus>>(`${this.statusBaseUrl}/nodes/status`, { nodeIds });
   }
 
   setFolderIndexed(nodeLike: ContentLakeNodeLike, indexed: boolean): Observable<NodeEntry> {

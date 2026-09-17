@@ -38,7 +38,7 @@ ext-rag/
     │   └── ext-rag.plugin.json       # Extension descriptor (routes, menus, sidebar)
     ├── lib/
     │   ├── components/
-    │   │   ├── rag-chat/                  # Chat-style Q&A component
+    │   │   ├── rag-chat/                  # Chat-style Q&A component, plus its delete-session dialog
     │   │   ├── rag-page/                  # Full-page wrapper (tabs: Ask + Search)
     │   │   ├── rag-search/                # Semantic search + facets component
     │   │   ├── rag-sidebar/               # Sidebar wrapper (compact chat)
@@ -51,18 +51,24 @@ ext-rag/
     │   │   ├── rag-api.service.ts         # HTTP client for rag-service (search/prompt/facets/status)
     │   │   ├── rag-auth.interceptor.ts    # Attaches the Alfresco ticket to /api/rag, /api/content-lake, /api/status
     │   │   ├── rag-chat-session.service.ts        # Chat session state
+    │   │   ├── content-source-catalog.service.ts  # The set of indexed sources, from /api/status
     │   │   ├── content-lake-scope.service.ts      # Active Content Lake scope
     │   │   └── content-lake-status-batch.service.ts # Batched node status lookups
     │   ├── utils/
     │   │   ├── content-lake-scope.utils.ts
+    │   │   ├── hxql.util.ts               # HXQL metadata filters, escaping included
+    │   │   ├── source-label.util.ts       # Display name and icon per source type
     │   │   ├── node-path.util.ts
     │   │   └── ecm-ticket.util.ts
     │   └── store/
     │       ├── rag.actions.ts             # NgRx action types
     │       └── rag.effects.ts             # NgRx effects (navigation)
-    ├── ext-rag.module.ts             # Root NgModule + provider function
+    ├── ext-rag.module.ts             # provideRagExtension(), plus the deprecated ExtRagModule
     └── public-api.ts                # Barrel exports
 ```
+
+Each directory also holds the matching `*.spec.ts` files, omitted above. They only run from the ACA
+workspace, which is where the Karma harness lives; see the Development section of the repository README.
 
 ## License
 
