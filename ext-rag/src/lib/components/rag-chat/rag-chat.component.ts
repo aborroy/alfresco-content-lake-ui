@@ -17,6 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MARKED_OPTIONS, MarkdownModule, provideMarkdown } from 'ngx-markdown';
 import { Subscription, of } from 'rxjs';
 import { take, catchError } from 'rxjs/operators';
 
@@ -28,6 +29,7 @@ import {
   SourceScope
 } from '../../services/content-source-catalog.service';
 import { RagDeleteSessionDialogComponent } from './rag-delete-session-dialog.component';
+import { ragChatMarkedOptions } from './rag-chat-marked-options';
 import { ChatMessage, MergedDocument, PromptSource, RagPromptOptions, RagPromptResponse } from '../../models/rag.models';
 import { resolveSourceType, sourceTypeLabel } from '../../utils/source-label.util';
 import { combineFilters, escapeHxqlLiteral, sourceIdClause } from '../../utils/hxql.util';
@@ -55,7 +57,18 @@ let _nextId = 0;
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MarkdownModule
+  ],
+  providers: [
+    // Provided here rather than relied on from the host application: an extension cannot assume the app
+    // it is dropped into has called provideMarkdown(). ACA's own AI results view does the same.
+    provideMarkdown({
+      markedOptions: {
+        provide: MARKED_OPTIONS,
+        useValue: ragChatMarkedOptions
+      }
+    })
   ],
   templateUrl: './rag-chat.component.html',
   styleUrls: ['./rag-chat.component.css']
@@ -436,7 +449,10 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
         if (event.type === 'token') {
           const raw = `${this.streamRawContent.get(assistantMsg.id) ?? ''}${event.token}`;
           this.streamRawContent.set(assistantMsg.id, raw);
-          assistantMsg.content = this.toPlainText(raw);
+          // The markdown is what gets kept; the stripped mirror is what gets shown until the answer is
+          // whole, since partial markdown renders badly and reflows on every token.
+          assistantMsg.content = raw;
+          assistantMsg.streamPreview = this.toPlainText(raw);
           this.shouldScroll = this.autoScrollEnabled;
           this.throttlePersistMessages();
           return;
@@ -526,9 +542,11 @@ export class RagChatComponent implements AfterViewChecked, OnInit {
       this.activeSessionId = response.sessionId;
     }
     if (response.answer) {
-      assistantMsg.content = this.toPlainText(response.answer);
+      assistantMsg.content = response.answer;
       this.streamRawContent.delete(assistantMsg.id);
     }
+    // The answer is complete either way, so the preview has served its purpose and the markdown renders.
+    delete assistantMsg.streamPreview;
     assistantMsg.model = response.model;
     assistantMsg.tokenCount = response.tokenCount;
     assistantMsg.totalMs = response.totalTimeMs;

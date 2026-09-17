@@ -299,6 +299,15 @@ export interface ChatMessage {
   structured?: StructuredAnswer;
   /** True between the metadata event and the structured event that follows it. */
   structuredPending?: boolean;
+  /**
+   * Plain-text mirror of a partially streamed answer.
+   *
+   * `content` is markdown and is rendered as markdown, but a half-arrived answer is not valid markdown:
+   * an unclosed fence or a table with one row so far renders as a mess that then reflows. So the stream
+   * is shown stripped and the markdown is rendered once the answer is complete. Only set while
+   * `loading` is true.
+   */
+  streamPreview?: string;
 }
 
 /* ------------------------------------------------------------------ */

@@ -127,8 +127,17 @@
 
           <!-- Answer text -->
           <div *ngIf="!msg.error" class="rag-chat__answer">
-            <div *ngIf="msg.content || msg.loading" class="rag-chat__answer-text">
-              {{ msg.content }}<span *ngIf="msg.loading" class="rag-chat__stream-cursor"></span>
+            <!--
+              Streaming shows the stripped mirror, because partial markdown renders as a mess and
+              reflows on every token; the finished answer is rendered as the markdown it is.
+            -->
+            <div *ngIf="msg.content || msg.loading"
+                 class="rag-chat__answer-text"
+                 [class.rag-chat__answer-text--streaming]="msg.loading">
+              <ng-container *ngIf="msg.loading; else renderedAnswer">{{ msg.streamPreview }}<span class="rag-chat__stream-cursor"></span></ng-container>
+              <ng-template #renderedAnswer>
+                <markdown class="rag-chat__markdown" [data]="msg.content"></markdown>
+              </ng-template>
             </div>
 
             <!-- Metadata -->

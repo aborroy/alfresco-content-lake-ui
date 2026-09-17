@@ -469,9 +469,46 @@
   white-space: pre-wrap;
 }
 
-.rag-chat__answer-text {
+/*
+ * pre-wrap belongs to the streamed plain-text mirror, where newlines are the only structure there is.
+ * Rendered markdown brings its own block elements, and pre-wrap there doubles every blank line.
+ */
+.rag-chat__answer-text--streaming {
   white-space: pre-wrap;
 }
+
+/* Rendered answers. Generated tables were the visible half of the defect the stripper caused. */
+.rag-chat__markdown :first-child { margin-top: 0; }
+.rag-chat__markdown :last-child { margin-bottom: 0; }
+
+.rag-chat__markdown p,
+.rag-chat__markdown ul,
+.rag-chat__markdown ol,
+.rag-chat__markdown pre,
+.rag-chat__markdown table {
+  margin: 0 0 0.75em;
+}
+
+.rag-chat__markdown pre {
+  padding: 0.6em 0.75em;
+  overflow-x: auto;
+  background: #f4f6f8;
+  border-radius: 4px;
+}
+
+.rag-chat__markdown table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rag-chat__markdown th,
+.rag-chat__markdown td {
+  padding: 0.35em 0.6em;
+  text-align: left;
+  border: 1px solid #d8dde3;
+}
+
+.rag-chat__markdown th { background: #f4f6f8; }
 
 .rag-chat__stream-cursor {
   display: inline-block;

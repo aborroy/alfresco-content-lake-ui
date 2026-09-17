@@ -184,15 +184,10 @@ describe('RagChatComponent', () => {
     expect(scrollSpy).toHaveBeenCalled();
   });
 
-  it('assistantAnswer_stripsMarkdownSyntaxFromMetadataResponse', () => {
+  it('assistantAnswer_keepsMarkdownFromMetadataResponseSoItCanBeRendered', () => {
+    const answer = '## LDAP setup\n**Define** _chain_ and [restart](https://example.com)\n- check properties';
     ragApiSpy.streamPrompt.and.returnValue(of(
-      {
-        type: 'metadata',
-        response: {
-          ...promptResponse,
-          answer: '## LDAP setup\n**Define** _chain_ and [restart](https://example.com)\n- check properties'
-        }
-      } as RagPromptStreamEvent,
+      { type: 'metadata', response: { ...promptResponse, answer } } as RagPromptStreamEvent,
       { type: 'done' } as RagPromptStreamEvent
     ));
 
@@ -200,21 +195,28 @@ describe('RagChatComponent', () => {
     component.ask();
 
     const assistant = component.messages.find((message) => message.role === 'assistant');
-    expect(assistant?.content).toBe('LDAP setup\nDefine chain and restart\n- check properties');
+    // Held verbatim: the template renders it with <markdown>. Stripping it here is what made every
+    // heading, list and generated table arrive as flat text.
+    expect(assistant?.content).toBe(answer);
+    // The streaming mirror has done its job by now and must not linger, or the finished answer would
+    // keep rendering as plain text.
+    expect(assistant?.streamPreview).toBeUndefined();
   });
 
-  it('assistantAnswer_stripsMarkdownSyntaxFromStreamingTokens', () => {
+  it('assistantAnswer_showsAStrippedMirrorWhileStreamingAndKeepsTheMarkdown', () => {
     ragApiSpy.streamPrompt.and.returnValue(of(
       { type: 'token', token: '**Define** _chain_' } as RagPromptStreamEvent,
-      { type: 'token', token: '\n- check properties' } as RagPromptStreamEvent,
-      { type: 'done' } as RagPromptStreamEvent
+      { type: 'token', token: '\n- check properties' } as RagPromptStreamEvent
     ));
 
     component.currentQuestion = 'How do I configure LDAP?';
     component.ask();
 
     const assistant = component.messages.find((message) => message.role === 'assistant');
-    expect(assistant?.content).toBe('Define chain\n- check properties');
+    // Accumulated raw, so the completed answer renders as markdown without a second request.
+    expect(assistant?.content).toBe('**Define** _chain_\n- check properties');
+    // Shown stripped until then: a half-open emphasis or a one-row table renders badly and reflows.
+    expect(assistant?.streamPreview).toBe('Define chain\n- check properties');
   });
 
   it('structuredMode_rendersSourcesFirstThenFillsTheStructuredBlock', () => {
